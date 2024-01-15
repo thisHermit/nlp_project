@@ -96,7 +96,16 @@ class MultitaskBERT(nn.Module):
         ### TODO
         raise NotImplementedError
 
-
+    def predict_paraphrase_type(self,
+                            input_ids_1, attention_mask_1,
+                            input_ids_2, attention_mask_2):
+         '''Given a batch of pairs of sentences, outputs logits for detecting the paraphrase type.
+         There are 7 different types of paraphrases.
+         Thus, your output should contain 7 logits for each sentence. 
+         
+         '''
+         ### TODO
+         raise NotImplementedError
 
 def save_model(model, optimizer, args, config, filepath):
     save_info = {
@@ -151,36 +160,54 @@ def train_multitask(args):
         model.train()
         train_loss = 0
         num_batches = 0
-        for batch in tqdm(sst_train_dataloader, desc=f'train-{epoch}', disable=TQDM_DISABLE):
-            b_ids, b_mask, b_labels = (batch['token_ids'],
-                                       batch['attention_mask'], batch['labels'])
+        
+        if args.task == 'sst' or args.task == 'multitask':
+            #trains the model on the sst dataset
+            
+            for batch in tqdm(sst_train_dataloader, desc=f'train-{epoch}', disable=TQDM_DISABLE):
+                b_ids, b_mask, b_labels = (batch['token_ids'],
+                                           batch['attention_mask'], batch['labels'])
+    
+                b_ids = b_ids.to(device)
+                b_mask = b_mask.to(device)
+                b_labels = b_labels.to(device)
+    
+                optimizer.zero_grad()
+                logits = model.predict_sentiment(b_ids, b_mask)
+                loss = F.cross_entropy(logits, b_labels.view(-1), reduction='sum') / args.batch_size
+    
+                loss.backward()
+                optimizer.step()
+    
+                train_loss += loss.item()
+                num_batches += 1
+    
+            train_loss = train_loss / (num_batches)
+    
+            train_acc, train_f1, *_ = model_eval_sst(sst_train_dataloader, model, device)
+            dev_acc, dev_f1, *_ = model_eval_sst(sst_dev_dataloader, model, device)
+    
+            if dev_acc > best_dev_acc:
+                best_dev_acc = dev_acc
+                save_model(model, optimizer, args, config, args.filepath)
+    
+            print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {train_acc :.3f}, dev acc :: {dev_acc :.3f}")
 
-            b_ids = b_ids.to(device)
-            b_mask = b_mask.to(device)
-            b_labels = b_labels.to(device)
-
-            optimizer.zero_grad()
-            logits = model.predict_sentiment(b_ids, b_mask)
-            loss = F.cross_entropy(logits, b_labels.view(-1), reduction='sum') / args.batch_size
-
-            loss.backward()
-            optimizer.step()
-
-            train_loss += loss.item()
-            num_batches += 1
-
-        train_loss = train_loss / (num_batches)
-
-        train_acc, train_f1, *_ = model_eval_sst(sst_train_dataloader, model, device)
-        dev_acc, dev_f1, *_ = model_eval_sst(sst_dev_dataloader, model, device)
-
-        if dev_acc > best_dev_acc:
-            best_dev_acc = dev_acc
-            save_model(model, optimizer, args, config, args.filepath)
-
-        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {train_acc :.3f}, dev acc :: {dev_acc :.3f}")
-
-
+        if args.task == 'sts' or args.task == 'multitask': 
+            #Trains the model on the sts dataset
+            ### TODO
+            raise NotImplementedError
+            
+        if args.task == 'qqp' or args.task == 'multitask': 
+          #Trains the model on the qqp dataset
+          ### TODO
+          raise NotImplementedError   
+          
+        if args.task == 'ptd' or args.task == 'multitask': 
+          #Trains the model on the ptd dataset
+          ### TODO
+          raise NotImplementedError 
+        
 
 def test_model(args):
     with torch.no_grad():
@@ -232,6 +259,13 @@ def get_args():
     parser.add_argument("--lr", type=float, help="learning rate, default lr for 'pretrain': 1e-3, 'finetune': 1e-5",
                         default=1e-3)
     parser.add_argument("--local_files_only", action='store_true')
+    
+    #training task
+    parser.add_argument("--task", type=str,
+                        help='choose between "sst","sts","qqp","ptd","multitask" to train for different tasks ',
+                        choices=('sst', 'sts','qqp','ptd', 'multitask'), default="sst")
+    
+    
 
     args = parser.parse_args()
     return args
