@@ -61,7 +61,8 @@ def model_eval_sst(dataloader, model, device):
 def model_eval_multitask(sentiment_dataloader,
                          paraphrase_dataloader,
                          sts_dataloader,
-                         model, device):
+                         ptd_dataloader,
+                         model, device,task):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
     with torch.no_grad():
@@ -70,55 +71,65 @@ def model_eval_multitask(sentiment_dataloader,
         para_sent_ids = []
 
         # Evaluate paraphrase detection.
-        for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['labels'], batch['sent_ids'])
+        if task == "qqp" or task == "multitask":
+            for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                (b_ids1, b_mask1,
+                 b_ids2, b_mask2,
+                 b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                              batch['token_ids_2'], batch['attention_mask_2'],
+                              batch['labels'], batch['sent_ids'])
+    
+                b_ids1 = b_ids1.to(device)
+                b_mask1 = b_mask1.to(device)
+                b_ids2 = b_ids2.to(device)
+                b_mask2 = b_mask2.to(device)
+    
+                logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
+                y_hat = logits.sigmoid().round().flatten().cpu().numpy()
+                b_labels = b_labels.flatten().cpu().numpy()
+    
+                para_y_pred.extend(y_hat)
+                para_y_true.extend(b_labels)
+                para_sent_ids.extend(b_sent_ids)
 
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.sigmoid().round().flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            para_y_pred.extend(y_hat)
-            para_y_true.extend(b_labels)
-            para_sent_ids.extend(b_sent_ids)
-
-        paraphrase_accuracy = np.mean(np.array(para_y_pred) == np.array(para_y_true))
-
+        if task == "qqp" or task == "multitask":
+            paraphrase_accuracy = np.mean(np.array(para_y_pred) == np.array(para_y_true))
+        else:
+            paraphrase_accuracy = None
+            
+            
         sts_y_true = []
         sts_y_pred = []
         sts_sent_ids = []
 
 
         # Evaluate semantic textual similarity.
-        for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['labels'], batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            sts_y_pred.extend(y_hat)
-            sts_y_true.extend(b_labels)
-            sts_sent_ids.extend(b_sent_ids)
-        pearson_mat = np.corrcoef(sts_y_pred,sts_y_true)
-        sts_corr = pearson_mat[1][0]
+        if task == "sts" or task == "multitask":
+            for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                (b_ids1, b_mask1,
+                 b_ids2, b_mask2,
+                 b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                              batch['token_ids_2'], batch['attention_mask_2'],
+                              batch['labels'], batch['sent_ids'])
+    
+                b_ids1 = b_ids1.to(device)
+                b_mask1 = b_mask1.to(device)
+                b_ids2 = b_ids2.to(device)
+                b_mask2 = b_mask2.to(device)
+    
+                logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
+                y_hat = logits.flatten().cpu().numpy()
+                b_labels = b_labels.flatten().cpu().numpy()
+    
+                sts_y_pred.extend(y_hat)
+                sts_y_true.extend(b_labels)
+                sts_sent_ids.extend(b_sent_ids)
+                
+        if task == "sts" or task == "multitask":        
+            pearson_mat = np.corrcoef(sts_y_pred,sts_y_true)
+            sts_corr = pearson_mat[1][0]
+        else:
+            sts_corr = None
 
 
         sst_y_true = []
@@ -126,35 +137,78 @@ def model_eval_multitask(sentiment_dataloader,
         sst_sent_ids = []
 
         # Evaluate sentiment classification.
-        for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            b_ids, b_mask, b_labels, b_sent_ids = batch['token_ids'], batch['attention_mask'], batch['labels'], batch['sent_ids']
+        if task == "sst" or task == "multitask":
+            for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                b_ids, b_mask, b_labels, b_sent_ids = batch['token_ids'], batch['attention_mask'], batch['labels'], batch['sent_ids']
+    
+                b_ids = b_ids.to(device)
+                b_mask = b_mask.to(device)
+    
+                logits = model.predict_sentiment(b_ids, b_mask)
+                y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
+                b_labels = b_labels.flatten().cpu().numpy()
+    
+                sst_y_pred.extend(y_hat)
+                sst_y_true.extend(b_labels)
+                sst_sent_ids.extend(b_sent_ids)
+                
+        if task == "sst" or task == "multitask":
+            sentiment_accuracy = np.mean(np.array(sst_y_pred) == np.array(sst_y_true))
+        else:
+            sentiment_accuracy = None
+        
+        ptd_y_true = []
+        ptd_y_pred = []
+        ptd_sent_ids = []
 
-            b_ids = b_ids.to(device)
-            b_mask = b_mask.to(device)
+        # Evaluate paraphrase detection.
+        if task == "ptd" or task == "multitask":
+            for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                (b_ids1, b_mask1,
+                 b_ids2, b_mask2,
+                 b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                              batch['token_ids_2'], batch['attention_mask_2'],
+                              batch['labels'], batch['sent_ids'])
+    
+                b_ids1 = b_ids1.to(device)
+                b_mask1 = b_mask1.to(device)
+                b_ids2 = b_ids2.to(device)
+                b_mask2 = b_mask2.to(device)
+    
+                logits = model.predict_paraphrase_type(b_ids1, b_mask1, b_ids2, b_mask2)
+                y_hat = logits.sigmoid().round().cpu().numpy()
+                b_labels = b_labels.cpu().numpy()
+    
+                ptd_y_pred.extend(y_hat)
+                ptd_y_true.extend(b_labels)
+                ptd_sent_ids.extend(b_sent_ids)
 
-            logits = model.predict_sentiment(b_ids, b_mask)
-            y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
+        if task == "ptd" or task == "multitask":
+            correct_pred= np.all(np.array(ptd_y_pred) == np.array(ptd_y_true), axis=1).astype(int)
+            ptd_accuracy = np.mean(correct_pred)
+        else:
+            paraphrase_accuracy = None
 
-            sst_y_pred.extend(y_hat)
-            sst_y_true.extend(b_labels)
-            sst_sent_ids.extend(b_sent_ids)
-
-        sentiment_accuracy = np.mean(np.array(sst_y_pred) == np.array(sst_y_true))
-
-        print(f'Paraphrase detection accuracy: {paraphrase_accuracy:.3f}')
-        print(f'Sentiment classification accuracy: {sentiment_accuracy:.3f}')
-        print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
+        if task == "qqp" or task == "multitask":
+            print(f'Paraphrase detection accuracy: {paraphrase_accuracy:.3f}')
+        if task == "sst" or task == "multitask":
+            print(f'Sentiment classification accuracy: {sentiment_accuracy:.3f}')
+        if task == "sts" or task == "multitask":
+            print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
+        if task == "ptd" or task == "multitask":
+            print(f'Paraphrase Type detection accuracy: {ptd_accuracy:.3f}')
 
         return (paraphrase_accuracy, para_y_pred, para_sent_ids,
                 sentiment_accuracy,sst_y_pred, sst_sent_ids,
-                sts_corr, sts_y_pred, sts_sent_ids)
+                sts_corr, sts_y_pred, sts_sent_ids,
+                ptd_accuracy, ptd_y_pred, ptd_sent_ids)
 
 # Perform model evaluation in terms by averaging accuracies across tasks.
 def model_eval_test_multitask(sentiment_dataloader,
                          paraphrase_dataloader,
                          sts_dataloader,
-                         model, device):
+                         ptd_dataloader,
+                         model, device,task):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
     with torch.no_grad():
@@ -162,23 +216,24 @@ def model_eval_test_multitask(sentiment_dataloader,
         para_y_pred = []
         para_sent_ids = []
         # Evaluate paraphrase detection.
-        for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.sigmoid().round().flatten().cpu().numpy()
-
-            para_y_pred.extend(y_hat)
-            para_sent_ids.extend(b_sent_ids)
+        if task == "qqp" or task == "multitask":
+            for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                (b_ids1, b_mask1,
+                 b_ids2, b_mask2,
+                 b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                              batch['token_ids_2'], batch['attention_mask_2'],
+                              batch['sent_ids'])
+    
+                b_ids1 = b_ids1.to(device)
+                b_mask1 = b_mask1.to(device)
+                b_ids2 = b_ids2.to(device)
+                b_mask2 = b_mask2.to(device)
+    
+                logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
+                y_hat = logits.sigmoid().round().flatten().cpu().numpy()
+    
+                para_y_pred.extend(y_hat)
+                para_sent_ids.extend(b_sent_ids)
 
 
         sts_y_pred = []
@@ -186,52 +241,77 @@ def model_eval_test_multitask(sentiment_dataloader,
 
 
         # Evaluate semantic textual similarity.
-        for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.flatten().cpu().numpy()
-
-            sts_y_pred.extend(y_hat)
-            sts_sent_ids.extend(b_sent_ids)
+        if task == "sts" or task == "multitask":
+            for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                (b_ids1, b_mask1,
+                 b_ids2, b_mask2,
+                 b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                              batch['token_ids_2'], batch['attention_mask_2'],
+                              batch['sent_ids'])
+    
+                b_ids1 = b_ids1.to(device)
+                b_mask1 = b_mask1.to(device)
+                b_ids2 = b_ids2.to(device)
+                b_mask2 = b_mask2.to(device)
+    
+                logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
+                y_hat = logits.flatten().cpu().numpy()
+    
+                sts_y_pred.extend(y_hat)
+                sts_sent_ids.extend(b_sent_ids)
 
 
         sst_y_pred = []
         sst_sent_ids = []
 
         # Evaluate sentiment classification.
-        for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            b_ids, b_mask, b_sent_ids = batch['token_ids'], batch['attention_mask'],  batch['sent_ids']
+        if task == "sst" or task == "multitask":
+            for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                b_ids, b_mask, b_sent_ids = batch['token_ids'], batch['attention_mask'],  batch['sent_ids']
+    
+                b_ids = b_ids.to(device)
+                b_mask = b_mask.to(device)
+    
+                logits = model.predict_sentiment(b_ids, b_mask)
+                y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
+    
+                sst_y_pred.extend(y_hat)
+                sst_sent_ids.extend(b_sent_ids)
+        
+        ptd_y_pred = []
+        ptd_sent_ids = []
+        if task == "ptd" or task == "multitask":
+            for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+                (b_ids1, b_mask1,
+                 b_ids2, b_mask2,
+                 b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                              batch['token_ids_2'], batch['attention_mask_2'],
+                              batch['sent_ids'])
+    
+                b_ids1 = b_ids1.to(device)
+                b_mask1 = b_mask1.to(device)
+                b_ids2 = b_ids2.to(device)
+                b_mask2 = b_mask2.to(device)
+    
+                logits = model.predict_paraphrase_type(b_ids1, b_mask1, b_ids2, b_mask2)
+                y_hat = logits.sigmoid().round().cpu().numpy()
+    
+                ptd_y_pred.extend(y_hat)
+                ptd_sent_ids.extend(b_sent_ids)
 
-            b_ids = b_ids.to(device)
-            b_mask = b_mask.to(device)
-
-            logits = model.predict_sentiment(b_ids, b_mask)
-            y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
-
-            sst_y_pred.extend(y_hat)
-            sst_sent_ids.extend(b_sent_ids)
 
         return (para_y_pred, para_sent_ids,
                 sst_y_pred, sst_sent_ids,
-                sts_y_pred, sts_sent_ids)
+                sts_y_pred, sts_sent_ids,
+                ptd_y_pred, ptd_sent_ids)
 
 
 def test_model_multitask(args, model, device):
-        sst_test_data, num_labels,para_test_data, sts_test_data = \
-            load_multitask_data(args.sst_test,args.para_test, args.sts_test, split='test')
+        sst_test_data, num_labels,para_test_data, sts_test_data, ptd_test_data = \
+            load_multitask_data(args.sst_test,args.para_test, args.sts_test,args.ptd_test, split='test')
 
-        sst_dev_data, num_labels,para_dev_data, sts_dev_data = \
-            load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev,split='dev')
+        sst_dev_data, num_labels,para_dev_data, sts_dev_data, ptd_dev_data = \
+            load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev,args.ptd_dev,split='dev')
 
         sst_test_data = SentenceClassificationTestDataset(sst_test_data, args)
         sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -257,47 +337,79 @@ def test_model_multitask(args, model, device):
         sts_dev_dataloader = DataLoader(sts_dev_data, shuffle=False, batch_size=args.batch_size,
                                         collate_fn=sts_dev_data.collate_fn)
 
+        ptd_test_data = SentencePairTestDataset(ptd_test_data, args)
+        ptd_dev_data = SentencePairDataset(ptd_dev_data, args) 
+
+        ptd_test_dataloader = DataLoader(ptd_test_data, shuffle=True, batch_size=args.batch_size,
+                                           collate_fn=ptd_test_data.collate_fn)
+        ptd_dev_dataloader = DataLoader(ptd_dev_data, shuffle=False, batch_size=args.batch_size,
+                                          collate_fn=ptd_dev_data.collate_fn)
+
+        
+        
+        task = args.task
+        
+
         dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids, \
             dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids, dev_sts_corr, \
-            dev_sts_y_pred, dev_sts_sent_ids = model_eval_multitask(sst_dev_dataloader,
-                                                                    para_dev_dataloader,
-                                                                    sts_dev_dataloader, model, device)
+            dev_sts_y_pred, dev_sts_sent_ids, dev_ptd_accuracy, \
+            dev_ptd_y_pred, dev_ptd_sent_ids = model_eval_multitask(sst_dev_dataloader,
+                                               para_dev_dataloader,
+                                               sts_dev_dataloader,
+                                               ptd_dev_dataloader,model, device,task)
 
         test_para_y_pred, test_para_sent_ids, test_sst_y_pred, \
-            test_sst_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
-                model_eval_test_multitask(sst_test_dataloader,
-                                          para_test_dataloader,
-                                          sts_test_dataloader, model, device)
+            test_sst_sent_ids, test_sts_y_pred, test_sts_sent_ids, \
+            test_ptd_y_pred, test_ptd_sent_ids = model_eval_test_multitask(sst_test_dataloader,
+                                                                           para_test_dataloader,
+                                                                           sts_test_dataloader,
+                                                                           ptd_test_dataloader,model, device,task)
 
-        with open(args.sst_dev_out, "w+") as f:
-            print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
-            f.write(f"id,Predicted_Sentiment\n")
-            for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
-                f.write(f"{p},{s}\n")
+        if task == "sst" or task == "multitask":
+            with open(args.sst_dev_out, "w+") as f:
+                print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
+                f.write(f"id,Predicted_Sentiment\n")
+                for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
+                    f.write(f"{p},{s}\n")
 
-        with open(args.sst_test_out, "w+") as f:
-            f.write(f"id,Predicted_Sentiment\n")
-            for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
-                f.write(f"{p},{s}\n")
+            with open(args.sst_test_out, "w+") as f:
+                f.write(f"id,Predicted_Sentiment\n")
+                for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
+                    f.write(f"{p},{s}\n")
 
-        with open(args.para_dev_out, "w+") as f:
-            print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
-            f.write(f"id,Predicted_Is_Paraphrase\n")
-            for p, s in zip(dev_para_sent_ids, dev_para_y_pred):
-                f.write(f"{p},{s}\n")
+        
+        if task == "qqp" or task == "multitask":
+            with open(args.para_dev_out, "w+") as f:
+                print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
+                f.write(f"id,Predicted_Is_Paraphrase\n")
+                for p, s in zip(dev_para_sent_ids, dev_para_y_pred):
+                    f.write(f"{p},{s}\n")
+    
+            with open(args.para_test_out, "w+") as f:
+                f.write(f"id,Predicted_Is_Paraphrase\n")
+                for p, s in zip(test_para_sent_ids, test_para_y_pred):
+                    f.write(f"{p},{s}\n")
 
-        with open(args.para_test_out, "w+") as f:
-            f.write(f"id,Predicted_Is_Paraphrase\n")
-            for p, s in zip(test_para_sent_ids, test_para_y_pred):
-                f.write(f"{p},{s}\n")
-
-        with open(args.sts_dev_out, "w+") as f:
-            print(f"dev sts corr :: {dev_sts_corr :.3f}")
-            f.write(f"id,Predicted_Similarity\n")
-            for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
-                f.write(f"{p},{s}\n")
-
-        with open(args.sts_test_out, "w+") as f:
-            f.write(f"id,Predicted_Similarity\n")
-            for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
-                f.write(f"{p},{s}\n")
+        if task == "sts" or task == "multitask":
+            with open(args.sts_dev_out, "w+") as f:
+                print(f"dev sts corr :: {dev_sts_corr :.3f}")
+                f.write(f"id,Predicted_Similarity\n")
+                for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
+                    f.write(f"{p},{s}\n")
+    
+            with open(args.sts_test_out, "w+") as f:
+                f.write(f"id,Predicted_Similarity\n")
+                for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
+                    f.write(f"{p},{s}\n")
+        
+        if task == "ptd" or task == "multitask":
+            with open(args.ptd_dev_out, "w+") as f:
+                print(f"dev ptd acc :: {dev_ptd_accuracy :.3f}")
+                f.write(f"id,Predicted_Paraphrase_Type\n")
+                for p, s in zip(dev_ptd_sent_ids, dev_ptd_y_pred):
+                    f.write(f"{p},{s}\n")
+    
+            with open(args.ptd_test_out, "w+") as f:
+                f.write(f"id,Predicted_Paraphrase_Type\n")
+                for p, s in zip(test_ptd_sent_ids, test_ptd_y_pred):
+                    f.write(f"{p},{s}\n")

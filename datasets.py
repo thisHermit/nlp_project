@@ -245,7 +245,7 @@ def load_multitask_test_data():
 
 
 
-def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename,split='train'):
+def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename,ptd_filename,split='train'):
     sentiment_data = []
     num_labels = {}
     if split == 'test':
@@ -305,5 +305,27 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
                                         float(record['similarity']),sent_id))
 
     print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
+    
+    ptd_data = []
+    if split == 'test':
+        with open(ptd_filename, 'r', encoding='utf-8') as fp:
+            for record in csv.DictReader(fp,delimiter = '\t'):
+                sent_id = record['id'].lower().strip()
+                ptd_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2']),
+                                        sent_id))
 
-    return sentiment_data, num_labels, paraphrase_data, similarity_data
+    else:
+        with open(ptd_filename, 'r', encoding='utf-8') as fp:
+            for record in csv.DictReader(fp,delimiter = '\t'):
+                try:
+                    sent_id = record['id'].lower().strip()
+                    ptd_data.append((preprocess_string(record['sentence1']),
+                                            preprocess_string(record['sentence2']),
+                                            int(float(record['is_duplicate'])),sent_id))
+                except:
+                    pass
+
+    print(f"Loaded {len(ptd_data)} {split} examples from {ptd_filename}")
+
+    return sentiment_data, num_labels, paraphrase_data, similarity_data, ptd_data
