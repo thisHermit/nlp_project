@@ -101,7 +101,8 @@ class MultitaskBERT(nn.Module):
                             input_ids_2, attention_mask_2):
          '''Given a batch of pairs of sentences, outputs logits for detecting the paraphrase type.
          There are 7 different types of paraphrases.
-         Thus, your output should contain 7 logits for each sentence. 
+         Thus, your output should contain 7 unnormalized logits for each sentence. It will be passed to the sigmoid function
+         during evaluation, and handled as a logit by the appropriate loss function.
          
          '''
          ### TODO
@@ -127,8 +128,8 @@ def train_multitask(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     # Load data
     # Create the data and its corresponding datasets and dataloader
-    sst_train_data, num_labels,para_train_data, sts_train_data = load_multitask_data(args.sst_train,args.para_train,args.sts_train, split ='train')
-    sst_dev_data, num_labels,para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev, split ='train')
+    sst_train_data, num_labels,para_train_data, sts_train_data, ptd_train_data = load_multitask_data(args.sst_train,args.para_train,args.sts_train,args.ptd_train, split ='train')
+    sst_dev_data, num_labels,para_dev_data, sts_dev_data, ptd_dev_data = load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev,args.ptd_dev, split ='train')
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -236,6 +237,10 @@ def get_args():
     parser.add_argument("--sts_train", type=str, default="data/sts-train.csv")
     parser.add_argument("--sts_dev", type=str, default="data/sts-dev.csv")
     parser.add_argument("--sts_test", type=str, default="data/sts-test-student.csv")
+    
+    parser.add_argument("--ptd_train", type=str, default="data/ptd-train.csv")
+    parser.add_argument("--ptd_dev", type=str, default="data/ptd-dev.csv")
+    parser.add_argument("--ptd_test", type=str, default="data/ptd-test-student.csv")
 
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--epochs", type=int, default=10)
@@ -253,6 +258,9 @@ def get_args():
     parser.add_argument("--sts_dev_out", type=str, default="predictions/sts-dev-output.csv")
     parser.add_argument("--sts_test_out", type=str, default="predictions/sts-test-output.csv")
 
+    parser.add_argument("--ptd_dev_out", type=str, default="predictions/ptd-dev-output.csv")
+    parser.add_argument("--ptd_test_out", type=str, default="predictions/ptd-test-output.csv")
+    
     # hyper parameters
     parser.add_argument("--batch_size", help='sst: 64 can fit a 12GB GPU', type=int, default=64)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
