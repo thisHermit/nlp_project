@@ -322,7 +322,8 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
                     sent_id = record['id'].lower().strip()
                     ptd_data.append((preprocess_string(record['sentence1']),
                                             preprocess_string(record['sentence2']),
-                                            int(float(record['is_duplicate'])),sent_id))
+                                            list(map(int,record['paraphrase_types'].strip('][').split(', '))),
+                                            sent_id))
                 except:
                     pass
 

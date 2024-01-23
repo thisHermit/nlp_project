@@ -294,7 +294,7 @@ def model_eval_test_multitask(sentiment_dataloader,
                 b_mask2 = b_mask2.to(device)
     
                 logits = model.predict_paraphrase_type(b_ids1, b_mask1, b_ids2, b_mask2)
-                y_hat = logits.sigmoid().round().cpu().numpy()
+                y_hat = logits.sigmoid().round().cpu().numpy().astype(int)
     
                 ptd_y_pred.extend(y_hat)
                 ptd_sent_ids.extend(b_sent_ids)
