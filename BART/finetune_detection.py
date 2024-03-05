@@ -124,7 +124,7 @@ def finetune_parahrase_detection(args):
     print("The accuracy of the Model is: ", accuracy)
     
     test_results = test_model(model, test_data, device)
-    test_results.to_csv('Datasets/paraphrase-test-results.csv', index=False)
+    test_results.to_csv('Predictions/detection-test-out.csv', index=False)
 
 
 if __name__ == "__main__":
