@@ -105,7 +105,7 @@ def get_args():
     return args
 
 
-def finetune_parahrase_detection(args):
+def finetune_paraphrase_detection(args):
     model = BartWithClassifier()
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     model.to(device)
@@ -130,4 +130,4 @@ def finetune_parahrase_detection(args):
 if __name__ == "__main__":
     args = get_args()
     seed_everything(args.seed)
-    finetune_parahrase_detection(args)
+    finetune_paraphrase_detection(args)
