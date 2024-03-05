@@ -100,7 +100,7 @@ def finetune_parahrase_generation(args):
     print("The BLEU-score of the model is: ", bleu_score)
     
     test_results = test_model(test_data, device, model)
-    test_results.to_csv('Datasets/paraphrase-test-results.csv', index=False)
+    test_results.to_csv('Datasets/generation-test-out.csv', index=False)
 
 
 if __name__ == "__main__":
