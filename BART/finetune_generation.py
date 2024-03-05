@@ -80,7 +80,7 @@ def get_args():
     return args
 
 
-def finetune_parahrase_generation(args):
+def finetune_paraphrase_generation(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     model_name = 'facebook/bart-large'
     model = BartForConditionalGeneration.from_pretrained(model_name)
@@ -106,4 +106,4 @@ def finetune_parahrase_generation(args):
 if __name__ == "__main__":
     args = get_args()
     seed_everything(args.seed)
-    finetune_parahrase_generation(args)
+    finetune_paraphrase_generation(args)
