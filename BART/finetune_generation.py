@@ -88,6 +88,10 @@ def finetune_parahrase_generation(args):
     
     train_dataset = pd.read_csv('Datasets/paraphrase-train.csv')
     test_dataset = pd.read_csv('Datasets/paraphrase-test-student.csv')
+    
+    # You might do a split of the train data into train/validation set here
+    #...
+    
     train_data = transform_data(train_dataset)
     test_data = transform_data(test_dataset)
     
