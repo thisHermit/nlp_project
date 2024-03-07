@@ -324,7 +324,7 @@ def test_model_multitask(args, model, device):
         
 
         dev_quora_accuracy, dev_quora_y_pred, dev_quora_sent_ids, \
-            dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids, dev_sts_corr, \
+            dev_sst_accuracy,dev_sst_y_pred, dev_sst_sent_ids, dev_sts_corr, \
             dev_sts_y_pred, dev_sts_sent_ids, dev_etpc_accuracy, \
             dev_etpc_y_pred, dev_etpc_sent_ids = model_eval_multitask(sst_dev_dataloader,
                                                quora_dev_dataloader,
@@ -340,7 +340,7 @@ def test_model_multitask(args, model, device):
 
         if task == "sst" or task == "multitask":
             with open(args.sst_dev_out, "w+") as f:
-                print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
+                print(f"dev sentiment acc :: {dev_sst_accuracy :.3f}")
                 f.write(f"id,Predicted_Sentiment\n")
                 for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
                     f.write(f"{p},{s}\n")
