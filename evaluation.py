@@ -61,7 +61,7 @@ def model_eval_sst(dataloader, model, device):
 def model_eval_multitask(sentiment_dataloader,
                          paraphrase_dataloader,
                          sts_dataloader,
-                         ptd_dataloader,
+                         etpc_dataloader,
                          model, device,task):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
@@ -157,13 +157,13 @@ def model_eval_multitask(sentiment_dataloader,
         else:
             sentiment_accuracy = None
         
-        ptd_y_true = []
-        ptd_y_pred = []
-        ptd_sent_ids = []
+        etpc_y_true = []
+        etpc_y_pred = []
+        etpc_sent_ids = []
 
         # Evaluate paraphrase type detection.
         if task == "etpc" or task == "multitask":
-            for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(etpc_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
                  b_ids2, b_mask2,
                  b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
@@ -179,13 +179,13 @@ def model_eval_multitask(sentiment_dataloader,
                 y_hat = logits.sigmoid().round().cpu().numpy()
                 b_labels = b_labels.cpu().numpy()
     
-                ptd_y_pred.extend(y_hat)
-                ptd_y_true.extend(b_labels)
-                ptd_sent_ids.extend(b_sent_ids)
+                etpc_y_pred.extend(y_hat)
+                etpc_y_true.extend(b_labels)
+                etpc_sent_ids.extend(b_sent_ids)
 
-        if task == "ptd" or task == "multitask":
-            correct_pred= np.all(np.array(ptd_y_pred) == np.array(ptd_y_true), axis=1).astype(int)
-            ptd_accuracy = np.mean(correct_pred)
+        if task == "etpc" or task == "multitask":
+            correct_pred= np.all(np.array(etpc_y_pred) == np.array(etpc_y_true), axis=1).astype(int)
+            etpc_accuracy = np.mean(correct_pred)
         else:
             paraphrase_accuracy = None
 
@@ -196,18 +196,18 @@ def model_eval_multitask(sentiment_dataloader,
         if task == "sts" or task == "multitask":
             print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
         if task == "etpc" or task == "multitask":
-            print(f'Paraphrase Type detection accuracy: {ptd_accuracy:.3f}')
+            print(f'Paraphrase Type detection accuracy: {etpc_accuracy:.3f}')
 
         return (paraphrase_accuracy, para_y_pred, para_sent_ids,
                 sentiment_accuracy,sst_y_pred, sst_sent_ids,
                 sts_corr, sts_y_pred, sts_sent_ids,
-                ptd_accuracy, ptd_y_pred, ptd_sent_ids)
+                etpc_accuracy, etpc_y_pred, etpc_sent_ids)
 
 # Perform model evaluation in terms by averaging accuracies across tasks.
 def model_eval_test_multitask(sentiment_dataloader,
                          paraphrase_dataloader,
                          sts_dataloader,
-                         ptd_dataloader,
+                         etpc_dataloader,
                          model, device,task):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
@@ -278,10 +278,10 @@ def model_eval_test_multitask(sentiment_dataloader,
                 sst_y_pred.extend(y_hat)
                 sst_sent_ids.extend(b_sent_ids)
         
-        ptd_y_pred = []
-        ptd_sent_ids = []
+        etpc_y_pred = []
+        etpc_sent_ids = []
         if task == "etpc" or task == "multitask":
-            for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(etpc_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
                  b_ids2, b_mask2,
                  b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
@@ -296,14 +296,14 @@ def model_eval_test_multitask(sentiment_dataloader,
                 logits = model.predict_paraphrase_types(b_ids1, b_mask1, b_ids2, b_mask2)
                 y_hat = logits.sigmoid().round().cpu().numpy().astype(int)
     
-                ptd_y_pred.extend(y_hat)
-                ptd_sent_ids.extend(b_sent_ids)
+                etpc_y_pred.extend(y_hat)
+                etpc_sent_ids.extend(b_sent_ids)
 
 
         return (para_y_pred, para_sent_ids,
                 sst_y_pred, sst_sent_ids,
                 sts_y_pred, sts_sent_ids,
-                ptd_y_pred, ptd_sent_ids)
+                etpc_y_pred, etpc_sent_ids)
 
 
 def test_model_multitask(args, model, device):
@@ -379,13 +379,13 @@ def test_model_multitask(args, model, device):
 
         
         if task == "qqp" or task == "multitask":
-            with open(args.para_dev_out, "w+") as f:
+            with open(args.quora_dev_out, "w+") as f:
                 print(f"dev paraphrase acc :: {dev_quora_accuracy :.3f}")
                 f.write(f"id,Predicted_Is_Paraphrase\n")
                 for p, s in zip(dev_quora_sent_ids, dev_quora_y_pred):
                     f.write(f"{p},{s}\n")
     
-            with open(args.para_test_out, "w+") as f:
+            with open(args.quora_test_out, "w+") as f:
                 f.write(f"id,Predicted_Is_Paraphrase\n")
                 for p, s in zip(test_quora_sent_ids, test_quora_y_pred):
                     f.write(f"{p},{s}\n")
@@ -403,13 +403,13 @@ def test_model_multitask(args, model, device):
                     f.write(f"{p},{s}\n")
         
         if task == "etpc" or task == "multitask":
-            with open(args.ptd_dev_out, "w+") as f:
-                print(f"dev ptd acc :: {dev_etpc_accuracy :.3f}")
+            with open(args.etpc_dev_out, "w+") as f:
+                print(f"dev etpc acc :: {dev_etpc_accuracy :.3f}")
                 f.write(f"id,Predicted_Paraphrase_Types\n")
                 for p, s in zip(dev_etpc_sent_ids, dev_etpc_y_pred):
                     f.write(f"{p},{s}\n")
     
-            with open(args.ptd_test_out, "w+") as f:
+            with open(args.etpc_test_out, "w+") as f:
                 f.write(f"id,Predicted_Paraphrase_Types\n")
                 for p, s in zip(test_etpc_sent_ids, test_etpc_y_pred):
                     f.write(f"{p},{s}\n")
