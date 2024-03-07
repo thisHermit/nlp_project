@@ -53,13 +53,18 @@ There are a few slight variations on AdamW, pleae note the following:
 
 You can check your optimizer implementation using `optimizer_test.py`.
 
-## classifier.py
-
-In this file, you'll get a sense of how BERT is typically used for downstream tasks. You will implement a model to do sentiment classification on top of BERT embeddings.
 
 ## multitask_classifier.py
 
-This is the starting point for the open-ended part of the project. You'll generalize your sentiment classification model to a multitask model, and choose how to train and improve it.
+This is the training and evaluation pipeline for the minBERT part of the project. You'll choose how to train and improve minBERT models on the quora, sts and sst datasets (additionally on the etpc dataset).
+
+## bart_generation.py
+
+In this file, you'll set up a pipeline for finetuning a BART model on the paraphrase generation task. 
+
+## bart_detection.py
+
+In this file, you'll set up a pipeline for finetuning a BART model on the paraphrase types detection task. 
 
 ## base_bert.py
 
