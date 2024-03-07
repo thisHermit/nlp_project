@@ -162,7 +162,7 @@ def model_eval_multitask(sentiment_dataloader,
         ptd_sent_ids = []
 
         # Evaluate paraphrase type detection.
-        if task == "ptd" or task == "multitask":
+        if task == "etpc" or task == "multitask":
             for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
                  b_ids2, b_mask2,
@@ -195,7 +195,7 @@ def model_eval_multitask(sentiment_dataloader,
             print(f'Sentiment classification accuracy: {sentiment_accuracy:.3f}')
         if task == "sts" or task == "multitask":
             print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
-        if task == "ptd" or task == "multitask":
+        if task == "etpc" or task == "multitask":
             print(f'Paraphrase Type detection accuracy: {ptd_accuracy:.3f}')
 
         return (paraphrase_accuracy, para_y_pred, para_sent_ids,
@@ -280,7 +280,7 @@ def model_eval_test_multitask(sentiment_dataloader,
         
         ptd_y_pred = []
         ptd_sent_ids = []
-        if task == "ptd" or task == "multitask":
+        if task == "etpc" or task == "multitask":
             for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
                  b_ids2, b_mask2,
@@ -307,11 +307,11 @@ def model_eval_test_multitask(sentiment_dataloader,
 
 
 def test_model_multitask(args, model, device):
-        sst_test_data, num_labels,para_test_data, sts_test_data, ptd_test_data = \
-            load_multitask_data(args.sst_test,args.para_test, args.sts_test,args.ptd_test, split='test')
+        sst_test_data, num_labels,quora_test_data, sts_test_data, etpc_test_data = \
+            load_multitask_data(args.sst_test,args.quora_test, args.sts_test,args.etpc_test, split='test')
 
-        sst_dev_data, num_labels,para_dev_data, sts_dev_data, ptd_dev_data = \
-            load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev,args.ptd_dev,split='dev')
+        sst_dev_data, num_labels,quora_dev_data, sts_dev_data, etpc_dev_data = \
+            load_multitask_data(args.sst_dev,args.quora_dev,args.sts_dev,args.etpc_dev,split='dev')
 
         sst_test_data = SentenceClassificationTestDataset(sst_test_data, args)
         sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -321,13 +321,13 @@ def test_model_multitask(args, model, device):
         sst_dev_dataloader = DataLoader(sst_dev_data, shuffle=False, batch_size=args.batch_size,
                                         collate_fn=sst_dev_data.collate_fn)
 
-        para_test_data = SentencePairTestDataset(para_test_data, args)
-        para_dev_data = SentencePairDataset(para_dev_data, args) 
+        quora_test_data = SentencePairTestDataset(quora_test_data, args)
+        quora_dev_data = SentencePairDataset(quora_dev_data, args) 
 
-        para_test_dataloader = DataLoader(para_test_data, shuffle=True, batch_size=args.batch_size,
-                                          collate_fn=para_test_data.collate_fn)
-        para_dev_dataloader = DataLoader(para_dev_data, shuffle=False, batch_size=args.batch_size,
-                                         collate_fn=para_dev_data.collate_fn)
+        quora_test_dataloader = DataLoader(quora_test_data, shuffle=True, batch_size=args.batch_size,
+                                          collate_fn=quora_test_data.collate_fn)
+        quora_dev_dataloader = DataLoader(quora_dev_data, shuffle=False, batch_size=args.batch_size,
+                                         collate_fn=quora_dev_data.collate_fn)
 
         sts_test_data = SentencePairTestDataset(sts_test_data, args)
         sts_dev_data = SentencePairDataset(sts_dev_data, args, isRegression=True)
@@ -337,33 +337,33 @@ def test_model_multitask(args, model, device):
         sts_dev_dataloader = DataLoader(sts_dev_data, shuffle=False, batch_size=args.batch_size,
                                         collate_fn=sts_dev_data.collate_fn)
 
-        ptd_test_data = SentencePairTestDataset(ptd_test_data, args)
-        ptd_dev_data = SentencePairDataset(ptd_dev_data, args) 
+        etpc_test_data = SentencePairTestDataset(etpc_test_data, args)
+        etpc_dev_data = SentencePairDataset(etpc_dev_data, args) 
 
-        ptd_test_dataloader = DataLoader(ptd_test_data, shuffle=True, batch_size=args.batch_size,
-                                           collate_fn=ptd_test_data.collate_fn)
-        ptd_dev_dataloader = DataLoader(ptd_dev_data, shuffle=False, batch_size=args.batch_size,
-                                          collate_fn=ptd_dev_data.collate_fn)
+        etpc_test_dataloader = DataLoader(etpc_test_data, shuffle=True, batch_size=args.batch_size,
+                                           collate_fn=etpc_test_data.collate_fn)
+        etpc_dev_dataloader = DataLoader(etpc_dev_data, shuffle=False, batch_size=args.batch_size,
+                                          collate_fn=etpc_dev_data.collate_fn)
 
         
         
         task = args.task
         
 
-        dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids, \
+        dev_quora_accuracy, dev_quora_y_pred, dev_quora_sent_ids, \
             dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids, dev_sts_corr, \
-            dev_sts_y_pred, dev_sts_sent_ids, dev_ptd_accuracy, \
-            dev_ptd_y_pred, dev_ptd_sent_ids = model_eval_multitask(sst_dev_dataloader,
-                                               para_dev_dataloader,
+            dev_sts_y_pred, dev_sts_sent_ids, dev_etpc_accuracy, \
+            dev_etpc_y_pred, dev_etpc_sent_ids = model_eval_multitask(sst_dev_dataloader,
+                                               quora_dev_dataloader,
                                                sts_dev_dataloader,
-                                               ptd_dev_dataloader,model, device,task)
+                                               etpc_dev_dataloader,model, device,task)
 
-        test_para_y_pred, test_para_sent_ids, test_sst_y_pred, \
+        test_quora_y_pred, test_quora_sent_ids, test_sst_y_pred, \
             test_sst_sent_ids, test_sts_y_pred, test_sts_sent_ids, \
-            test_ptd_y_pred, test_ptd_sent_ids = model_eval_test_multitask(sst_test_dataloader,
-                                                                           para_test_dataloader,
+            test_etpc_y_pred, test_etpc_sent_ids = model_eval_test_multitask(sst_test_dataloader,
+                                                                           quora_test_dataloader,
                                                                            sts_test_dataloader,
-                                                                           ptd_test_dataloader,model, device,task)
+                                                                           etpc_test_dataloader,model, device,task)
 
         if task == "sst" or task == "multitask":
             with open(args.sst_dev_out, "w+") as f:
@@ -380,14 +380,14 @@ def test_model_multitask(args, model, device):
         
         if task == "qqp" or task == "multitask":
             with open(args.para_dev_out, "w+") as f:
-                print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
+                print(f"dev paraphrase acc :: {dev_quora_accuracy :.3f}")
                 f.write(f"id,Predicted_Is_Paraphrase\n")
-                for p, s in zip(dev_para_sent_ids, dev_para_y_pred):
+                for p, s in zip(dev_quora_sent_ids, dev_quora_y_pred):
                     f.write(f"{p},{s}\n")
     
             with open(args.para_test_out, "w+") as f:
                 f.write(f"id,Predicted_Is_Paraphrase\n")
-                for p, s in zip(test_para_sent_ids, test_para_y_pred):
+                for p, s in zip(test_quora_sent_ids, test_quora_y_pred):
                     f.write(f"{p},{s}\n")
 
         if task == "sts" or task == "multitask":
@@ -402,14 +402,14 @@ def test_model_multitask(args, model, device):
                 for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
                     f.write(f"{p},{s}\n")
         
-        if task == "ptd" or task == "multitask":
+        if task == "etpc" or task == "multitask":
             with open(args.ptd_dev_out, "w+") as f:
-                print(f"dev ptd acc :: {dev_ptd_accuracy :.3f}")
+                print(f"dev ptd acc :: {dev_etpc_accuracy :.3f}")
                 f.write(f"id,Predicted_Paraphrase_Types\n")
-                for p, s in zip(dev_ptd_sent_ids, dev_ptd_y_pred):
+                for p, s in zip(dev_etpc_sent_ids, dev_etpc_y_pred):
                     f.write(f"{p},{s}\n")
     
             with open(args.ptd_test_out, "w+") as f:
                 f.write(f"id,Predicted_Paraphrase_Types\n")
-                for p, s in zip(test_ptd_sent_ids, test_ptd_y_pred):
+                for p, s in zip(test_etpc_sent_ids, test_etpc_y_pred):
                     f.write(f"{p},{s}\n")

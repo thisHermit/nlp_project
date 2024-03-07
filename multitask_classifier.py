@@ -128,8 +128,8 @@ def train_multitask(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     # Load data
     # Create the data and its corresponding datasets and dataloader
-    sst_train_data, num_labels,para_train_data, sts_train_data, ptd_train_data = load_multitask_data(args.sst_train,args.para_train,args.sts_train,args.ptd_train, split ='train')
-    sst_dev_data, num_labels,para_dev_data, sts_dev_data, ptd_dev_data = load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev,args.ptd_dev, split ='train')
+    sst_train_data, num_labels,para_train_data, sts_train_data, etpc_train_data = load_multitask_data(args.sst_train,args.quora_train,args.sts_train,args.etpc_train, split ='train')
+    sst_dev_data, num_labels,para_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(args.sst_dev,args.quora_dev,args.sts_dev,args.etpc_dev, split ='train')
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -139,6 +139,10 @@ def train_multitask(args):
     sst_dev_dataloader = DataLoader(sst_dev_data, shuffle=False, batch_size=args.batch_size,
                                     collate_fn=sst_dev_data.collate_fn)
 
+    ### TODO
+    #   Load data for the other datasets
+    
+    
     # Init model
     config = {'hidden_dropout_prob': args.hidden_dropout_prob,
               'num_labels': num_labels,
@@ -204,7 +208,7 @@ def train_multitask(args):
           ### TODO
           raise NotImplementedError   
           
-        if args.task == 'ptd' or args.task == 'multitask': 
+        if args.task == 'etpc' or args.task == 'multitask': 
           #Trains the model on the ptd dataset
           ### TODO
           raise NotImplementedError 
@@ -238,8 +242,9 @@ def get_args():
     parser.add_argument("--sts_dev", type=str, default="data/sts-similarity-dev.csv")
     parser.add_argument("--sts_test", type=str, default="data/sts-similarity-test-student.csv")
     
+    #You should split the traindata into a train and dev set first and change the default path of the --etpc_dev argument to your dev set
     parser.add_argument("--etpc_train", type=str, default="data/etpc-paraphrase-train.csv")
-    parser.add_argument("--etpc_dev", type=str, default="data/etpc-paraphrase-dev.csv")
+    parser.add_argument("--etpc_dev", type=str, default="data/etpc-paraphrase-train.csv")
     parser.add_argument("--etpc_test", type=str, default="data/etpc-paraphrase-detection-test-student.csv")
 
     parser.add_argument("--seed", type=int, default=11711)
@@ -270,8 +275,8 @@ def get_args():
     
     #training task
     parser.add_argument("--task", type=str,
-                        help='choose between "sst","sts","qqp","ptd","multitask" to train for different tasks ',
-                        choices=('sst', 'sts','qqp','ptd', 'multitask'), default="sst")
+                        help='choose between "sst","sts","qqp","etpc","multitask" to train for different tasks ',
+                        choices=('sst', 'sts','qqp','etpc', 'multitask'), default="sst")
     
     
 

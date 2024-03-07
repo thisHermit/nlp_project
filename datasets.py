@@ -309,7 +309,7 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
     ptd_data = []
     if split == 'test':
         with open(ptd_filename, 'r', encoding='utf-8') as fp:
-            for record in csv.DictReader(fp,delimiter = '\t'):
+            for record in csv.DictReader(fp,delimiter = ','):
                 sent_id = record['id'].lower().strip()
                 ptd_data.append((preprocess_string(record['sentence1']),
                                         preprocess_string(record['sentence2']),
@@ -317,7 +317,7 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
 
     else:
         with open(ptd_filename, 'r', encoding='utf-8') as fp:
-            for record in csv.DictReader(fp,delimiter = '\t'):
+            for record in csv.DictReader(fp,delimiter = ','):
                 try:
                     sent_id = record['id'].lower().strip()
                     ptd_data.append((preprocess_string(record['sentence1']),
