@@ -1,15 +1,19 @@
-#!/usr/bin/env bash
+#!/bin/bash -i
+set -e
 
-conda create -n dnlp python=3.8
+# Set up Conda, install Python
+conda create -n dnlp python=3.10
 conda activate dnlp
 
-conda install pytorch==1.8.0 torchvision torchaudio cudatoolkit=10.1 -c pytorch
-pip install tqdm==4.58.0
-pip install requests==2.25.1
-pip install importlib-metadata==3.7.0
-pip install filelock==3.0.12
-pip install sklearn==0.0
-pip install tokenizers==0.10.1
-pip install explainaboard_client==0.0.7
-pip install transformers
-pip install sacrebleu
+# Check for CUDA and install appropriate PyTorch version
+if command -v nvidia-smi &>/dev/null; then
+    echo "CUDA detected, installing PyTorch with CUDA support."
+    conda install pytorch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 pytorch-cuda=12.1 -c pytorch -c nvidia
+else
+    echo "CUDA not detected, installing CPU-only PyTorch."
+    conda install pytorch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 cpuonly -c pytorch
+fi
+
+# Install additional packages
+conda install tqdm==4.66.2 requests==2.31.0 scikit-learn==1.1.1 transformers==4.38.2 tensorboard==2.16.2 tokenizers==0.15.1 -c conda-forge -c huggingface
+pip install explainaboard-client==0.1.4 sacrebleu==2.4.0
