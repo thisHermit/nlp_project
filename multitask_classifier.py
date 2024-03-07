@@ -209,7 +209,7 @@ def train_multitask(args):
           raise NotImplementedError   
           
         if args.task == 'etpc' or args.task == 'multitask': 
-          #Trains the model on the ptd dataset
+          #Trains the model on the etpc dataset
           ### TODO
           raise NotImplementedError 
         

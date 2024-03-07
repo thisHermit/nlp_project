@@ -245,7 +245,7 @@ def load_multitask_test_data():
 
 
 
-def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename,ptd_filename,split='train'):
+def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename,etpc_filename,split='train'):
     sentiment_data = []
     num_labels = {}
     if split == 'test':
@@ -306,27 +306,27 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
 
     print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
     
-    ptd_data = []
+    etpc_data = []
     if split == 'test':
-        with open(ptd_filename, 'r', encoding='utf-8') as fp:
+        with open(etpc_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = ','):
                 sent_id = record['id'].lower().strip()
-                ptd_data.append((preprocess_string(record['sentence1']),
+                etpc_data.append((preprocess_string(record['sentence1']),
                                         preprocess_string(record['sentence2']),
                                         sent_id))
 
     else:
-        with open(ptd_filename, 'r', encoding='utf-8') as fp:
+        with open(etpc_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = ','):
                 try:
                     sent_id = record['id'].lower().strip()
-                    ptd_data.append((preprocess_string(record['sentence1']),
+                    etpc_data.append((preprocess_string(record['sentence1']),
                                             preprocess_string(record['sentence2']),
                                             list(map(int,record['paraphrase_types'].strip('][').split(', '))),
                                             sent_id))
                 except:
                     pass
 
-    print(f"Loaded {len(ptd_data)} {split} examples from {ptd_filename}")
+    print(f"Loaded {len(etpc_data)} {split} examples from {etpc_filename}")
 
-    return sentiment_data, num_labels, paraphrase_data, similarity_data, ptd_data
+    return sentiment_data, num_labels, paraphrase_data, similarity_data, etpc_data
