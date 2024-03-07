@@ -207,44 +207,6 @@ class SentencePairTestDataset(Dataset):
         return batched_data
 
 
-def load_multitask_test_data():
-    paraphrase_filename = f'data/quora-test.csv'
-    sentiment_filename = f'data/ids-sst-test.txt'
-    similarity_filename = f'data/sts-test.csv'
-
-    sentiment_data = []
-
-    with open(sentiment_filename, 'r', encoding='utf-8') as fp:
-        for record in csv.DictReader(fp,delimiter = '\t'):
-            sent = record['sentence'].lower().strip()
-            sentiment_data.append(sent)
-
-    print(f"Loaded {len(sentiment_data)} test examples from {sentiment_filename}")
-
-    paraphrase_data = []
-    with open(paraphrase_filename, 'r', encoding='utf-8') as fp:
-        for record in csv.DictReader(fp,delimiter = '\t'):
-            #if record['split'] != split:
-            #    continue
-            paraphrase_data.append((preprocess_string(record['sentence1']),
-                                    preprocess_string(record['sentence2']),
-                                    ))
-
-    print(f"Loaded {len(paraphrase_data)} test examples from {paraphrase_filename}")
-
-    similarity_data = []
-    with open(similarity_filename, 'r', encoding='utf-8') as fp:
-        for record in csv.DictReader(fp,delimiter = '\t'):
-            similarity_data.append((preprocess_string(record['sentence1']),
-                                    preprocess_string(record['sentence2']),
-                                    ))
-
-    print(f"Loaded {len(similarity_data)} test examples from {similarity_filename}")
-
-    return sentiment_data, paraphrase_data, similarity_data
-
-
-
 def load_multitask_data(sst_filename,quora_filename,sts_filename,etpc_filename,split='train'):
     sst_data = []
     num_labels = {}
