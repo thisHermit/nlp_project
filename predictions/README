@@ -1,2 +1,2 @@
-This is where your predictions in the test splits will be saved to.
-Before running make_submission.sh, make sure that this directory has been populated!
+This is where your predictions for the test splits will be saved to.
+Before running prepare_submit.py, make sure that the two subfolders have been populated!

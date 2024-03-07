@@ -4,12 +4,11 @@ import os
 import sys
 import zipfile
 
-# Collect Python files
-required_files = [p for p in os.listdir(".") if p.endswith(".py")]
 
 # Collect predictions
+required_files = []
 for root, dirs, files in os.walk("predictions"):
-    required_files += [os.path.join(root, file) for file in files]
+    required_files += [os.path.join(root, file) for file in files if not file.endswith(".gitkeep")]
 
 
 def main():
