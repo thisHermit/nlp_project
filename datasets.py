@@ -245,66 +245,66 @@ def load_multitask_test_data():
 
 
 
-def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename,etpc_filename,split='train'):
-    sentiment_data = []
+def load_multitask_data(sst_filename,quora_filename,sts_filename,etpc_filename,split='train'):
+    sst_data = []
     num_labels = {}
     if split == 'test':
-        with open(sentiment_filename, 'r', encoding='utf-8') as fp:
+        with open(sst_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = '\t'):
                 sent = record['sentence'].lower().strip()
                 sent_id = record['id'].lower().strip()
-                sentiment_data.append((sent,sent_id))
+                sst_data.append((sent,sent_id))
     else:
-        with open(sentiment_filename, 'r', encoding='utf-8') as fp:
+        with open(sst_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = '\t'):
                 sent = record['sentence'].lower().strip()
                 sent_id = record['id'].lower().strip()
                 label = int(record['sentiment'].strip())
                 if label not in num_labels:
                     num_labels[label] = len(num_labels)
-                sentiment_data.append((sent, label,sent_id))
+                sst_data.append((sent, label,sent_id))
 
-    print(f"Loaded {len(sentiment_data)} {split} examples from {sentiment_filename}")
+    print(f"Loaded {len(sst_data)} {split} examples from {sst_filename}")
 
-    paraphrase_data = []
+    quora_data = []
     if split == 'test':
-        with open(paraphrase_filename, 'r', encoding='utf-8') as fp:
+        with open(quora_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = '\t'):
                 sent_id = record['id'].lower().strip()
-                paraphrase_data.append((preprocess_string(record['sentence1']),
+                quora_data.append((preprocess_string(record['sentence1']),
                                         preprocess_string(record['sentence2']),
                                         sent_id))
 
     else:
-        with open(paraphrase_filename, 'r', encoding='utf-8') as fp:
+        with open(quora_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = '\t'):
                 try:
                     sent_id = record['id'].lower().strip()
-                    paraphrase_data.append((preprocess_string(record['sentence1']),
+                    quora_data.append((preprocess_string(record['sentence1']),
                                             preprocess_string(record['sentence2']),
                                             int(float(record['is_duplicate'])),sent_id))
                 except:
                     pass
 
-    print(f"Loaded {len(paraphrase_data)} {split} examples from {paraphrase_filename}")
+    print(f"Loaded {len(quora_data)} {split} examples from {quora_filename}")
 
-    similarity_data = []
+    sts_data = []
     if split == 'test':
-        with open(similarity_filename, 'r', encoding='utf-8') as fp:
+        with open(sts_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = '\t'):
                 sent_id = record['id'].lower().strip()
-                similarity_data.append((preprocess_string(record['sentence1']),
+                sts_data.append((preprocess_string(record['sentence1']),
                                         preprocess_string(record['sentence2'])
                                         ,sent_id))
     else:
-        with open(similarity_filename, 'r', encoding='utf-8') as fp:
+        with open(sts_filename, 'r', encoding='utf-8') as fp:
             for record in csv.DictReader(fp,delimiter = '\t'):
                 sent_id = record['id'].lower().strip()
-                similarity_data.append((preprocess_string(record['sentence1']),
+                sts_data.append((preprocess_string(record['sentence1']),
                                         preprocess_string(record['sentence2']),
                                         float(record['similarity']),sent_id))
 
-    print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
+    print(f"Loaded {len(sts_data)} {split} examples from {sts_filename}")
     
     etpc_data = []
     if split == 'test':
@@ -329,4 +329,4 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
 
     print(f"Loaded {len(etpc_data)} {split} examples from {etpc_filename}")
 
-    return sentiment_data, num_labels, paraphrase_data, similarity_data, etpc_data
+    return sst_data, num_labels, quora_data, sts_data, etpc_data

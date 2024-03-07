@@ -13,7 +13,7 @@ from tqdm import tqdm
 from datasets import SentenceClassificationDataset, SentencePairDataset, \
     load_multitask_data, load_multitask_test_data
 
-from evaluation import model_eval_sst, test_model_multitask
+from evaluation import model_eval_multitask, test_model_multitask
 
 
 TQDM_DISABLE=True
@@ -191,8 +191,8 @@ def train_multitask(args):
     
             train_loss = train_loss / (num_batches)
     
-            train_acc, train_f1, *_ = model_eval_sst(sst_train_dataloader, model, device)
-            dev_acc, dev_f1, *_ = model_eval_sst(sst_dev_dataloader, model, device)
+            train_acc = list(model_eval_multitask(sst_train_dataloader, model, device, "sst"))[4]
+            dev_acc  = list(model_eval_multitask(sst_dev_dataloader, model, device, "sst"))[4]
     
             if dev_acc > best_dev_acc:
                 best_dev_acc = dev_acc
@@ -253,7 +253,7 @@ def get_args():
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--option", type=str,
                         help='pretrain: the BERT parameters are frozen; finetune: BERT parameters are updated',
-                        choices=('pretrain', 'finetune'), default="pretrain")
+                        choices=('pretrain', 'finetune'), default="finetune")
     parser.add_argument("--use_gpu", action='store_true')
 
     parser.add_argument("--sst_dev_out", type=str, default="predictions/bert/sst-sentiment-dev-output.csv")
