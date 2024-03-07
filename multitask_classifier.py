@@ -141,6 +141,8 @@ def train_multitask(args):
 
     ### TODO
     #   Load data for the other datasets
+    # If you are doing the paraphrase type detection with the minBERT model as well, make sure
+    # to transform the the data labels into binarys (as required in the bart_detection.py script)
     
     
     # Init model

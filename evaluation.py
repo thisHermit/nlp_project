@@ -28,51 +28,24 @@ from datasets import load_multitask_data, load_multitask_test_data, \
 
 TQDM_DISABLE = True
 
-# Evaluate a multitask model for accuracy.on SST only.
-def model_eval_sst(dataloader, model, device):
-    model.eval()  # switch to eval model, will turn off randomness like dropout
-    y_true = []
-    y_pred = []
-    sents = []
-    sent_ids = []
-    for step, batch in enumerate(tqdm(dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-        b_ids, b_mask, b_labels, b_sents, b_sent_ids = batch['token_ids'],batch['attention_mask'],  \
-                                                        batch['labels'], batch['sents'], batch['sent_ids']
 
-        b_ids = b_ids.to(device)
-        b_mask = b_mask.to(device)
-
-        logits = model.predict_sentiment(b_ids, b_mask)
-        logits = logits.detach().cpu().numpy()
-        preds = np.argmax(logits, axis=1).flatten()
-
-        b_labels = b_labels.flatten()
-        y_true.extend(b_labels)
-        y_pred.extend(preds)
-        sents.extend(b_sents)
-        sent_ids.extend(b_sent_ids)
-
-    f1 = f1_score(y_true, y_pred, average='macro')
-    acc = accuracy_score(y_true, y_pred)
-
-    return acc, f1, y_pred, y_true, sents, sent_ids
 
 # Perform model evaluation in terms by averaging accuracies across tasks.
-def model_eval_multitask(sentiment_dataloader,
-                         paraphrase_dataloader,
+def model_eval_multitask(sst_dataloader,
+                         quora_dataloader,
                          sts_dataloader,
                          etpc_dataloader,
                          model, device,task):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
     with torch.no_grad():
-        para_y_true = []
-        para_y_pred = []
-        para_sent_ids = []
+        quora_y_true = []
+        quora_y_pred = []
+        quora_sent_ids = []
 
         # Evaluate paraphrase detection.
         if task == "qqp" or task == "multitask":
-            for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(quora_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
                  b_ids2, b_mask2,
                  b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
@@ -88,14 +61,14 @@ def model_eval_multitask(sentiment_dataloader,
                 y_hat = logits.sigmoid().round().flatten().cpu().numpy()
                 b_labels = b_labels.flatten().cpu().numpy()
     
-                para_y_pred.extend(y_hat)
-                para_y_true.extend(b_labels)
-                para_sent_ids.extend(b_sent_ids)
+                quora_y_pred.extend(y_hat)
+                quora_y_true.extend(b_labels)
+                quora_sent_ids.extend(b_sent_ids)
 
         if task == "qqp" or task == "multitask":
-            paraphrase_accuracy = np.mean(np.array(para_y_pred) == np.array(para_y_true))
+            quora_accuracy = np.mean(np.array(quora_y_pred) == np.array(quora_y_true))
         else:
-            paraphrase_accuracy = None
+            quora_accuracy = None
             
             
         sts_y_true = []
@@ -138,7 +111,7 @@ def model_eval_multitask(sentiment_dataloader,
 
         # Evaluate sentiment classification.
         if task == "sst" or task == "multitask":
-            for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(sst_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_labels, b_sent_ids = batch['token_ids'], batch['attention_mask'], batch['labels'], batch['sent_ids']
     
                 b_ids = b_ids.to(device)
@@ -153,9 +126,9 @@ def model_eval_multitask(sentiment_dataloader,
                 sst_sent_ids.extend(b_sent_ids)
                 
         if task == "sst" or task == "multitask":
-            sentiment_accuracy = np.mean(np.array(sst_y_pred) == np.array(sst_y_true))
+            sst_accuracy = np.mean(np.array(sst_y_pred) == np.array(sst_y_true))
         else:
-            sentiment_accuracy = None
+            sst_accuracy = None
         
         etpc_y_true = []
         etpc_y_pred = []
@@ -187,25 +160,25 @@ def model_eval_multitask(sentiment_dataloader,
             correct_pred= np.all(np.array(etpc_y_pred) == np.array(etpc_y_true), axis=1).astype(int)
             etpc_accuracy = np.mean(correct_pred)
         else:
-            paraphrase_accuracy = None
+            etpc_accuracy = None
 
         if task == "qqp" or task == "multitask":
-            print(f'Paraphrase detection accuracy: {paraphrase_accuracy:.3f}')
+            print(f'Paraphrase detection accuracy: {quora_accuracy:.3f}')
         if task == "sst" or task == "multitask":
-            print(f'Sentiment classification accuracy: {sentiment_accuracy:.3f}')
+            print(f'Sentiment classification accuracy: {sst_accuracy:.3f}')
         if task == "sts" or task == "multitask":
             print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
         if task == "etpc" or task == "multitask":
             print(f'Paraphrase Type detection accuracy: {etpc_accuracy:.3f}')
 
-        return (paraphrase_accuracy, para_y_pred, para_sent_ids,
-                sentiment_accuracy,sst_y_pred, sst_sent_ids,
+        return (quora_accuracy, quora_y_pred, quora_sent_ids,
+                sst_accuracy,sst_y_pred, sst_sent_ids,
                 sts_corr, sts_y_pred, sts_sent_ids,
                 etpc_accuracy, etpc_y_pred, etpc_sent_ids)
 
 # Perform model evaluation in terms by averaging accuracies across tasks.
-def model_eval_test_multitask(sentiment_dataloader,
-                         paraphrase_dataloader,
+def model_eval_test_multitask(sst_dataloader,
+                         quora_dataloader,
                          sts_dataloader,
                          etpc_dataloader,
                          model, device,task):
@@ -213,11 +186,11 @@ def model_eval_test_multitask(sentiment_dataloader,
 
     with torch.no_grad():
 
-        para_y_pred = []
-        para_sent_ids = []
+        quora_y_pred = []
+        quora_sent_ids = []
         # Evaluate paraphrase detection.
         if task == "qqp" or task == "multitask":
-            for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(quora_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
                  b_ids2, b_mask2,
                  b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
@@ -232,8 +205,8 @@ def model_eval_test_multitask(sentiment_dataloader,
                 logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
                 y_hat = logits.sigmoid().round().flatten().cpu().numpy()
     
-                para_y_pred.extend(y_hat)
-                para_sent_ids.extend(b_sent_ids)
+                quora_y_pred.extend(y_hat)
+                quora_sent_ids.extend(b_sent_ids)
 
 
         sts_y_pred = []
@@ -266,7 +239,7 @@ def model_eval_test_multitask(sentiment_dataloader,
 
         # Evaluate sentiment classification.
         if task == "sst" or task == "multitask":
-            for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(sst_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_sent_ids = batch['token_ids'], batch['attention_mask'],  batch['sent_ids']
     
                 b_ids = b_ids.to(device)
@@ -300,7 +273,7 @@ def model_eval_test_multitask(sentiment_dataloader,
                 etpc_sent_ids.extend(b_sent_ids)
 
 
-        return (para_y_pred, para_sent_ids,
+        return (quora_y_pred, quora_sent_ids,
                 sst_y_pred, sst_sent_ids,
                 sts_y_pred, sts_sent_ids,
                 etpc_y_pred, etpc_sent_ids)
