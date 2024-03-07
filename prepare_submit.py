@@ -1,7 +1,6 @@
 # Creates a zip file for submission.
 
 import os
-import sys
 import zipfile
 
 
@@ -13,7 +12,6 @@ for root, dirs, files in os.walk("predictions"):
 
 def main():
     aid = "dnlp_final_project_submission"
-    path = os.getcwd()
     with zipfile.ZipFile(f"{aid}.zip", "w") as zz:
         for file in required_files:
             zz.write(file, os.path.join(".", file))

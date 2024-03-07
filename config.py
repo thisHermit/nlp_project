@@ -1,4 +1,3 @@
-from typing import Union, Tuple, Dict, Any, Optional
 import os
 import json
 from collections import OrderedDict
@@ -92,18 +91,18 @@ class PretrainedConfig(object):
         raise err
 
   @classmethod
-  def from_pretrained(cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs) -> "PretrainedConfig":
+  def from_pretrained(cls, pretrained_model_name_or_path: str | os.PathLike, **kwargs) -> "PretrainedConfig":
     config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
     return cls.from_dict(config_dict, **kwargs)
 
   @classmethod
-  def _dict_from_json_file(cls, json_file: Union[str, os.PathLike]):
+  def _dict_from_json_file(cls, json_file: str | os.PathLike):
     with open(json_file, "r", encoding="utf-8") as reader:
       text = reader.read()
     return json.loads(text)
 
   @classmethod
-  def from_dict(cls, config_dict: Dict[str, Any], **kwargs) -> "PretrainedConfig":
+  def from_dict(cls, config_dict: str | object, **kwargs) -> "PretrainedConfig":
     return_unused_kwargs = kwargs.pop("return_unused_kwargs", False)
 
     config = cls(**config_dict)
@@ -127,8 +126,8 @@ class PretrainedConfig(object):
 
   @classmethod
   def get_config_dict(
-    cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs
-  ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    cls, pretrained_model_name_or_path: str | os.PathLike, **kwargs
+  ) -> tuple[dict[str, object], dict[str, object]]:
     cache_dir = kwargs.pop("cache_dir", None)
     force_download = kwargs.pop("force_download", False)
     resume_download = kwargs.pop("resume_download", False)

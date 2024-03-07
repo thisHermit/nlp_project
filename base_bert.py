@@ -1,5 +1,5 @@
 import re
-from torch import device, dtype
+from torch import dtype
 from config import BertConfig, PretrainedConfig
 from utils import *
 
@@ -238,11 +238,5 @@ class BertPreTrainedModel(nn.Module):
         "error_msgs": error_msgs,
       }
       return model, loading_info
-
-    if hasattr(config, "xla_device") and config.xla_device and is_torch_tpu_available():
-      import torch_xla.core.xla_model as xm
-
-      model = xm.send_cpu_data_to_device(model, xm.xla_device())
-      model.to(xm.xla_device())
 
     return model

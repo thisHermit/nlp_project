@@ -17,7 +17,6 @@ explicitly aside from model_eval_multitask.
 
 import torch
 from torch.utils.data import DataLoader
-from sklearn.metrics import classification_report, f1_score, recall_score, accuracy_score
 from tqdm import tqdm
 import numpy as np
 

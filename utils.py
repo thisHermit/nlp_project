@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+import shutil
+import tarfile
 from typing import Dict, List, Optional, Union, Tuple, BinaryIO
 import fnmatch
 import os
@@ -5,6 +8,7 @@ import sys
 import json
 import tempfile
 import copy
+from zipfile import ZipFile, is_zipfile
 from tqdm.auto import tqdm
 from functools import partial
 from urllib.parse import urlparse
@@ -16,6 +20,7 @@ import importlib_metadata
 import torch
 import torch.nn as nn
 from torch import Tensor
+from huggingface_hub.hf_api import HfFolder
 
 __version__ = "4.0.0"
 _torch_version = importlib_metadata.version("torch")
@@ -108,8 +113,6 @@ def http_user_agent(user_agent: Union[Dict, str, None] = None) -> str:
   ua = "transformers/{}; python/{}".format(__version__, sys.version.split()[0])
   if is_torch_available():
     ua += f"; torch/{_torch_version}"
-  if is_tf_available():
-    ua += f"; tensorflow/{_tf_version}"
   if isinstance(user_agent, dict):
     ua += "; " + "; ".join("{}/{}".format(k, v) for k, v in user_agent.items())
   elif isinstance(user_agent, str):
@@ -219,7 +222,7 @@ def get_from_cache(
       incomplete_path = cache_path + ".incomplete"
 
       @contextmanager
-      def _resumable_file_manager() -> "io.BufferedWriter":
+      def _resumable_file_manager():
         with open(incomplete_path, "ab") as f:
           yield f
 
