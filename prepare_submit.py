@@ -1,12 +1,15 @@
-# Creates a zip file for submission on Gradescope.
+# Creates a zip file for submission.
 
 import os
 import sys
 import zipfile
 
-required_files = [p for p in os.listdir(".") if p.endswith(".py")] + [
-    f"predictions/{p}" for p in os.listdir("predictions")
-]
+# Collect Python files
+required_files = [p for p in os.listdir(".") if p.endswith(".py")]
+
+# Collect predictions
+for root, dirs, files in os.walk("predictions"):
+    required_files += [os.path.join(root, file) for file in files]
 
 
 def main():

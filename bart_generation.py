@@ -29,8 +29,9 @@ def train_model(model, train_data, device):
 
 def test_model(test_data, device, model):
     '''
-    Test the model. Predict the results and return them as the Pandas dataframe with columns 'id' and 'sentence2' (those are the generations of the model for given sentence1). 
-    Format of the data in the columns should be the same as in the train dataset. 
+    Test the model. Generate paraphrases for the given sentences (sentence1) and return the results 
+    in form of a Pandas dataframe with the columns 'id' and 'Generated_sentence2'. 
+    The data format in the columns should be the same as in the train dataset. 
     Return this dataframe.
     '''
     ### TODO
@@ -100,7 +101,7 @@ def finetune_paraphrase_generation(args):
     print("The BLEU-score of the model is: ", bleu_score)
     
     test_results = test_model(test_data, device, model)
-    test_results.to_csv("predictions/etpc-paraphrase-generation-test-out.csv" , index=False)
+    test_results.to_csv("predictions/bart/etpc-paraphrase-generation-test-output.csv" , index=False)
 
 
 if __name__ == "__main__":

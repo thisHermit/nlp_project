@@ -44,8 +44,9 @@ def train_model(model, train_data, device):
 
 def test_model(model, test_data, device):
     '''
-    Test the model. Predict the results and return them as the Pandas dataframe with columns 'id' and 'paraphrase_types'.
-    The 'paraphrase_type' column should contain the binary array of your model predictions. 
+    Test the model. Predict the paraphrase types for the given sentences and return the results in form of 
+    a Pandas dataframe with the columns 'id' and 'Predicted_Paraphrase_Types'.
+    The 'Predicted_Paraphrase_Types' column should contain the binary array of your model predictions. 
     Return this dataframe.
     '''
     ### TODO
@@ -124,7 +125,7 @@ def finetune_paraphrase_detection(args):
     print("The accuracy of the Model is: ", accuracy)
     
     test_results = test_model(model, test_data, device)
-    test_results.to_csv("predictions/etpc-paraphrase-detection-test-out.csv", index=False)
+    test_results.to_csv("predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False)
 
 
 if __name__ == "__main__":

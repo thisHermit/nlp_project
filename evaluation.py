@@ -161,7 +161,7 @@ def model_eval_multitask(sentiment_dataloader,
         ptd_y_pred = []
         ptd_sent_ids = []
 
-        # Evaluate paraphrase detection.
+        # Evaluate paraphrase type detection.
         if task == "ptd" or task == "multitask":
             for step, batch in enumerate(tqdm(ptd_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1,
@@ -175,7 +175,7 @@ def model_eval_multitask(sentiment_dataloader,
                 b_ids2 = b_ids2.to(device)
                 b_mask2 = b_mask2.to(device)
     
-                logits = model.predict_paraphrase_type(b_ids1, b_mask1, b_ids2, b_mask2)
+                logits = model.predict_paraphrase_types(b_ids1, b_mask1, b_ids2, b_mask2)
                 y_hat = logits.sigmoid().round().cpu().numpy()
                 b_labels = b_labels.cpu().numpy()
     
@@ -293,7 +293,7 @@ def model_eval_test_multitask(sentiment_dataloader,
                 b_ids2 = b_ids2.to(device)
                 b_mask2 = b_mask2.to(device)
     
-                logits = model.predict_paraphrase_type(b_ids1, b_mask1, b_ids2, b_mask2)
+                logits = model.predict_paraphrase_types(b_ids1, b_mask1, b_ids2, b_mask2)
                 y_hat = logits.sigmoid().round().cpu().numpy().astype(int)
     
                 ptd_y_pred.extend(y_hat)
@@ -405,11 +405,11 @@ def test_model_multitask(args, model, device):
         if task == "ptd" or task == "multitask":
             with open(args.ptd_dev_out, "w+") as f:
                 print(f"dev ptd acc :: {dev_ptd_accuracy :.3f}")
-                f.write(f"id,Predicted_Paraphrase_Type\n")
+                f.write(f"id,Predicted_Paraphrase_Types\n")
                 for p, s in zip(dev_ptd_sent_ids, dev_ptd_y_pred):
                     f.write(f"{p},{s}\n")
     
             with open(args.ptd_test_out, "w+") as f:
-                f.write(f"id,Predicted_Paraphrase_Type\n")
+                f.write(f"id,Predicted_Paraphrase_Types\n")
                 for p, s in zip(test_ptd_sent_ids, test_ptd_y_pred):
                     f.write(f"{p},{s}\n")

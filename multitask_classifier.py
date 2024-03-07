@@ -96,10 +96,10 @@ class MultitaskBERT(nn.Module):
         ### TODO
         raise NotImplementedError
 
-    def predict_paraphrase_type(self,
+    def predict_paraphrase_types(self,
                             input_ids_1, attention_mask_1,
                             input_ids_2, attention_mask_2):
-         '''Given a batch of pairs of sentences, outputs logits for detecting the paraphrase type.
+         '''Given a batch of pairs of sentences, outputs logits for detecting the paraphrase types.
          There are 7 different types of paraphrases.
          Thus, your output should contain 7 unnormalized logits for each sentence. It will be passed to the sigmoid function
          during evaluation, and handled as a logit by the appropriate loss function.
@@ -226,21 +226,21 @@ def test_model(args):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
-    parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
-    parser.add_argument("--sst_test", type=str, default="data/ids-sst-test-student.csv")
+    parser.add_argument("--sst_train", type=str, default="data/sst-sentiment-train.csv")
+    parser.add_argument("--sst_dev", type=str, default="data/sst-sentiment-dev.csv")
+    parser.add_argument("--sst_test", type=str, default="data/sst-sentiment-test-student.csv")
 
-    parser.add_argument("--para_train", type=str, default="data/quora-train.csv")
-    parser.add_argument("--para_dev", type=str, default="data/quora-dev.csv")
-    parser.add_argument("--para_test", type=str, default="data/quora-test-student.csv")
+    parser.add_argument("--quora_train", type=str, default="data/quora-paraphrase-train.csv")
+    parser.add_argument("--quora_dev", type=str, default="data/quora-paraphrase-dev.csv")
+    parser.add_argument("--quora_test", type=str, default="data/quora-paraphrase-test-student.csv")
 
-    parser.add_argument("--sts_train", type=str, default="data/sts-train.csv")
-    parser.add_argument("--sts_dev", type=str, default="data/sts-dev.csv")
-    parser.add_argument("--sts_test", type=str, default="data/sts-test-student.csv")
+    parser.add_argument("--sts_train", type=str, default="data/sts-similarity-train.csv")
+    parser.add_argument("--sts_dev", type=str, default="data/sts-similarity-dev.csv")
+    parser.add_argument("--sts_test", type=str, default="data/sts-similarity-test-student.csv")
     
-    parser.add_argument("--ptd_train", type=str, default="data/ptd-train.csv")
-    parser.add_argument("--ptd_dev", type=str, default="data/ptd-dev.csv")
-    parser.add_argument("--ptd_test", type=str, default="data/ptd-test-student.csv")
+    parser.add_argument("--etpc_train", type=str, default="data/etpc-paraphrase-train.csv")
+    parser.add_argument("--etpc_dev", type=str, default="data/etpc-paraphrase-dev.csv")
+    parser.add_argument("--etpc_test", type=str, default="data/etpc-paraphrase-detection-test-student.csv")
 
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--epochs", type=int, default=10)
@@ -249,19 +249,19 @@ def get_args():
                         choices=('pretrain', 'finetune'), default="pretrain")
     parser.add_argument("--use_gpu", action='store_true')
 
-    parser.add_argument("--sst_dev_out", type=str, default="predictions/sst-dev-output.csv")
-    parser.add_argument("--sst_test_out", type=str, default="predictions/sst-test-output.csv")
+    parser.add_argument("--sst_dev_out", type=str, default="predictions/bert/sst-sentiment-dev-output.csv")
+    parser.add_argument("--sst_test_out", type=str, default="predictions/bert/sst-sentiment-test-output.csv")
 
-    parser.add_argument("--para_dev_out", type=str, default="predictions/para-dev-output.csv")
-    parser.add_argument("--para_test_out", type=str, default="predictions/para-test-output.csv")
+    parser.add_argument("--quora_dev_out", type=str, default="predictions/bert/quora-paraphrase-dev-output.csv")
+    parser.add_argument("--quora_test_out", type=str, default="predictions/bert/quora-paraphrase-test-output.csv")
 
-    parser.add_argument("--sts_dev_out", type=str, default="predictions/sts-dev-output.csv")
-    parser.add_argument("--sts_test_out", type=str, default="predictions/sts-test-output.csv")
+    parser.add_argument("--sts_dev_out", type=str, default="predictions/bert/sts-similarity-dev-output.csv")
+    parser.add_argument("--sts_test_out", type=str, default="predictions/bert/sts-similarity-test-output.csv")
 
-    parser.add_argument("--ptd_dev_out", type=str, default="predictions/ptd-dev-output.csv")
-    parser.add_argument("--ptd_test_out", type=str, default="predictions/ptd-test-output.csv")
+    parser.add_argument("--etpc_dev_out", type=str, default="predictions/bert/etpc-paraphrase-detection-dev-output.csv")
+    parser.add_argument("--etpc_test_out", type=str, default="predictions/bert/etpc-paraphrase-detection-test-output.csv")
     
-    # hyper parameters
+    # hyper parametersDie 
     parser.add_argument("--batch_size", help='sst: 64 can fit a 12GB GPU', type=int, default=64)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
     parser.add_argument("--lr", type=float, help="learning rate, default lr for 'pretrain': 1e-3, 'finetune': 1e-5",
