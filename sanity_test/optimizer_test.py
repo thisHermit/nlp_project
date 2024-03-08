@@ -1,21 +1,38 @@
 import torch
 import numpy as np
-from ..optimizer import AdamW
+import sys
+
+sys.path.append("../")
+from optimizer import AdamW
 
 seed = 0
 
+"""
+This script tests the correct functionality of the optimizer class by performing
+an optimization task with AdamW.
 
-def test_optimizer(opt_class) -> torch.Tensor:
+Can only be called from same directory as the file.
+
+The test is successful if the final weights of the model are close to the reference.
+"""
+
+
+def test_optimizer(opt_class: torch.optim.Optimizer) -> torch.Tensor:
     rng = np.random.default_rng(seed)
-    torch.manual_seed(seed)
+    _ = torch.manual_seed(seed)
+
+    # Create a simple model
     model = torch.nn.Linear(3, 2, bias=False)
+
     opt = opt_class(
         model.parameters(),
         lr=1e-3,
         weight_decay=1e-4,
         correct_bias=True,
     )
-    for i in range(1000):
+
+    # Optimize the model for a few steps
+    for _ in range(1000):
         opt.zero_grad()
         x = torch.FloatTensor(rng.uniform(size=[model.in_features]))
         y_hat = model(x)
@@ -23,6 +40,7 @@ def test_optimizer(opt_class) -> torch.Tensor:
         loss = ((y - y_hat) ** 2).sum()
         loss.backward()
         opt.step()
+
     return model.weight.detach()
 
 
