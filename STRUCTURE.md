@@ -2,7 +2,7 @@
 
 ## bert.py
 
-This file contains the BERT Model whose backbone is the [transformer](https://arxiv.org/pdf/1706.03762.pdf). We recommend walking through Section 3 of the paper to understand each component of the transformer. This is where you'll start your implementation: your first goal is to complete this file in order to pass the tests in `sanity_check.py`.
+This file contains the BERT Model whose backbone is the [transformer](https://arxiv.org/pdf/1706.03762.pdf). We recommend walking through Section 3 of the paper to understand each component of the transformer. This is where you'll start your implementation: your first goal is to complete this file in order to pass the tests in `sanity_test/sanity_check.py`.
 
 ### BertSelfAttention
 
@@ -50,9 +50,9 @@ Components that require your implementations are marked with ```TODO```. More de
 
 ### Sanity check
 
-We provide a sanity check function at sanity_check.py to test your implementation. It will reload two embeddings we computed with our reference implementation and check whether your implementation outputs match ours.
+We provide a sanity check function at `sanity_test/sanity_check.py` to test your implementation. It will reload two embeddings we computed with our reference implementation and check whether your implementation outputs match ours.
 
-## optimizer.py  (to be implemented)
+## optimizer.py (to be implemented)
 
 This is where `AdamW` is defined.
 You will need to update the `step()` function based on [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101) and [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980).
@@ -62,19 +62,19 @@ There are a few slight variations on AdamW, pleae note the following:
 * The learning rate is incorporated into the weight decay update.
 * There is no learning rate schedule: we'll use the same alpha throughout.
 
-You can check your optimizer implementation using `optimizer_test.py`.
+You can check your optimizer implementation using `sanity_test/optimizer_test.py`.
 
 ## multitask_classifier.py
 
 This is the training and evaluation pipeline for the minBERT part of the project. You'll choose how to train and improve minBERT models on the quora, sts and sst datasets (additionally on the etpc dataset).
 
-## bart_generation.py
-
-In this file, you'll set up a pipeline for finetuning a BART model on the paraphrase generation task.
-
 ## bart_detection.py
 
-In this file, you'll set up a pipeline for finetuning a BART model on the paraphrase types detection task.
+In this file, you'll set up a pipeline for finetuning a BART model on the paraphrase types detection task. Use BCEWithLogitsLoss as the loss function. As a starting point, use 'facebook/bart-large' as the pre-trained model.
+
+## bart_generation.py
+
+In this file, you'll set up a pipeline for finetuning a BART model on the paraphrase generation task. Fill the file based on the comments and the instructions in the file.
 
 ## base_bert.py
 
