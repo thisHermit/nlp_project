@@ -12,7 +12,7 @@ You will then implement extensions to improve on top of this baseline.
 
 * Follow `setup.sh` to properly setup a conda environment and install dependencies.
 * There is a detailed description of the code structure in [STRUCTURE.md](./STRUCTURE.md), including a description of which parts you will need to implement.
-* You are only allowed to use libraries that are installed by `setup.sh`
+* You are only allowed to use libraries that are installed by `setup.sh` (Use `setup_gwdg.sh` if you are using the GWDG clusters).
 * Libraries that give you other pre-trained models or embeddings are not allowed (e.g., `transformers`).
 * Use this template to create your README file of your repository: <https://github.com/gipplab/dnlp_readme_template>
 
@@ -30,3 +30,5 @@ created by Shuyan Zhou, Zhengbao Jiang, Ritam Dutt, Brendon Boldt, Aditya Veerub
 Parts of the code are from the [`transformers`](https://github.com/huggingface/transformers) library ([Apache License 2.0](./LICENSE)).
 
 Parts of the scripts and code were altered by [Jan Philip Wahle](https://jpwahle.com/) and [Terry Ruas](https://terryruas.com/).
+
+For the 2024 edition of the DNLP course at the University of Göttingen, the project was modified by [Niklas Bauer](https://github.com/ItsNiklas/), ...
