@@ -56,12 +56,13 @@ class AdamW(Optimizer):
                 # Complete the implementation of AdamW here, reading and saving
                 # your state in the `state` dictionary above.
                 # The hyperparameters can be read from the `group` dictionary
-                # (they are lr, betas, eps, weight_decay, as saved in the constructor).
+                # (they are lr, betas, eps, weight_decay, and correct_bias, as saved in
+                # the constructor).
                 #
-                # 1- Update first and second moments of the gradients
-                # 2- Apply bias correction
+                # 1- Update first and second moments of the gradients.
+                # 2- Apply bias correction.
                 #    (using the "efficient version" given in https://arxiv.org/abs/1412.6980;
-                #     also given in the pseudo-code in the project description).
+                #     also given as the pseudo-code in the project description).
                 # 3- Update parameters (p.data).
                 # 4- After that main gradient-based update, update again using weight decay
                 #    (incorporating the learning rate again).
