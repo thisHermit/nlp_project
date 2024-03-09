@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -33,19 +34,22 @@ class BertSelfAttention(nn.Module):
         return proj
 
     def attention(self, key, query, value, attention_mask):
-        # each attention is calculated following eq (1) of https://arxiv.org/pdf/1706.03762.pdf
-        # attention scores are calculated by multiply query and key
+        # each attention is calculated following eq (1) of https://arxiv.org/pdf/1706.03762.pdf.
+        # attention scores are calculated by multiplying queries and keys
         # and get back a score matrix S of [bs, num_attention_heads, seq_len, seq_len]
-        # S[*, i, j, k] represents the (unnormalized)attention score between the j-th and k-th token, given by i-th attention head
-        # before normalizing the scores, use the attention mask to mask out the padding token scores
-        # Note again: in the attention_mask non-padding tokens with 0 and padding tokens with a large negative number
+        # S[*, i, j, k] represents the (unnormalized) attention score between the j-th
+        # and k-th token, given by i-th attention head before normalizing the scores,
+        # use the attention mask to mask out the padding token scores.
 
-        # normalize the scores
-        # multiply the attention scores to the value and get back V'
-        # next, we need to concat multi-heads and recover the original shape [bs, seq_len, num_attention_heads * attention_head_size = hidden_size]
+        # Note again: in the attention_mask non-padding tokens are marked with 0 and
+        # adding tokens with a large negative number.
 
         ### TODO
         raise NotImplementedError
+        # Normalize the scores.
+        # Multiply the attention scores to the value and get back V'.
+        # Next, we need to concat multi-heads and recover the original shape
+        # [bs, seq_len, num_attention_heads * attention_head_size = hidden_size].
 
     def forward(self, hidden_states, attention_mask):
         """
@@ -82,21 +86,28 @@ class BertLayer(nn.Module):
 
     def add_norm(self, input, output, dense_layer, dropout, ln_layer):
         """
-        this function is applied after the multi-head attention layer or the feed forward layer
+        Apply residual connection to any layer and normalize the output.
+        This function is applied after the multi-head attention layer or the feed forward layer.
+
         input: the input of the previous layer
         output: the output of the previous layer
         dense_layer: used to transform the output
         dropout: the dropout to be applied
         ln_layer: the layer norm to be applied
         """
-        # Hint: Remember that BERT applies to the output of each sub-layer, before it is added to the sub-layer input and normalized
         ### TODO
         raise NotImplementedError
+        # Hint: Remember that BERT applies dropout to the output of each sub-layer,
+        # before it is added to the sub-layer input and normalized.
 
     def forward(self, hidden_states, attention_mask):
         """
+        A single pass of the bert layer.
+
         hidden_states: either from the embedding layer (first bert layer) or from the previous bert layer
-        as shown in the left of Figure 1 of https://arxiv.org/pdf/1706.03762.pdf
+        as shown in the left of Figure 1 of https://arxiv.org/pdf/1706.03762.pdf.
+        attention_mask: the mask for the attention layer
+
         each block consists of
         1. a multi-head attention layer (BertSelfAttention)
         2. a add-norm that takes the input and output of the multi-head attention layer
@@ -158,14 +169,15 @@ class BertModel(BertPreTrainedModel):
         pos_embeds = None
         ### TODO
         raise NotImplementedError
-
-        # Get token type ids, since we are not consider token type, just a placeholder.
+        # Get token type ids, since we are not considering token type,
+        # this is just a placeholder.
         tk_type_ids = torch.zeros(input_shape, dtype=torch.long, device=input_ids.device)
         tk_type_embeds = self.tk_type_embedding(tk_type_ids)
 
-        # Add three embeddings together; then apply embed_layer_norm and dropout and return.
         ### TODO
         raise NotImplementedError
+        # Add three embeddings together; then apply embed_layer_norm and dropout and
+        # return the hidden states.
 
     def encode(self, hidden_states, attention_mask):
         """
