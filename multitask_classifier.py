@@ -42,17 +42,19 @@ N_SENTIMENT_CLASSES = 5
 
 class MultitaskBERT(nn.Module):
     """
-    This module should use BERT for 3 tasks:
+    This module should use BERT for these tasks:
 
     - Sentiment classification (predict_sentiment)
     - Paraphrase detection (predict_paraphrase)
     - Semantic Textual Similarity (predict_similarity)
+    (- Paraphrase type detection (predict_paraphrase_types))
     """
 
     def __init__(self, config):
         super(MultitaskBERT, self).__init__()
+
         # You will want to add layers here to perform the downstream tasks.
-        # Pretrain mode does not require updating bert paramters.
+        # Pretrain mode does not require updating bert parameters.
         self.bert = BertModel.from_pretrained(
             "bert-base-uncased", local_files_only=config.local_files_only
         )
@@ -65,7 +67,8 @@ class MultitaskBERT(nn.Module):
         raise NotImplementedError
 
     def forward(self, input_ids, attention_mask):
-        "Takes a batch of sentences and produces embeddings for them."
+        """Takes a batch of sentences and produces embeddings for them."""
+
         # The final BERT embedding is the hidden state of [CLS] token (the first token)
         # Here, you can start by just returning the embeddings straight from BERT.
         # When thinking of improvements, you can later try modifying this
@@ -74,26 +77,32 @@ class MultitaskBERT(nn.Module):
         raise NotImplementedError
 
     def predict_sentiment(self, input_ids, attention_mask):
-        """Given a batch of sentences, outputs logits for classifying sentiment.
+        """
+        Given a batch of sentences, outputs logits for classifying sentiment.
         There are 5 sentiment classes:
         (0 - negative, 1- somewhat negative, 2- neutral, 3- somewhat positive, 4- positive)
         Thus, your output should contain 5 logits for each sentence.
+        Dataset: SST
         """
         ### TODO
         raise NotImplementedError
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        """Given a batch of pairs of sentences, outputs a single logit for predicting whether they are paraphrases.
+        """
+        Given a batch of pairs of sentences, outputs a single logit for predicting whether they are paraphrases.
         Note that your output should be unnormalized (a logit); it will be passed to the sigmoid function
         during evaluation, and handled as a logit by the appropriate loss function.
+        Dataset: Quora
         """
         ### TODO
         raise NotImplementedError
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        """Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
+        """
+        Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
         Since the similarity label is a number in the interval [0,5], your output should be normalized to the interval [0,5];
         it will be handled as a logit by the appropriate loss function.
+        Dataset: STS
         """
         ### TODO
         raise NotImplementedError
@@ -101,11 +110,12 @@ class MultitaskBERT(nn.Module):
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
     ):
-        """Given a batch of pairs of sentences, outputs logits for detecting the paraphrase types.
+        """
+        Given a batch of pairs of sentences, outputs logits for detecting the paraphrase types.
         There are 7 different types of paraphrases.
         Thus, your output should contain 7 unnormalized logits for each sentence. It will be passed to the sigmoid function
         during evaluation, and handled as a logit by the appropriate loss function.
-
+        Dataset: ETPC
         """
         ### TODO
         raise NotImplementedError
@@ -126,11 +136,11 @@ def save_model(model, optimizer, args, config, filepath):
     print(f"save the model to {filepath}")
 
 
-## Currently only trains on sst dataset
+# TODO Currently only trains on SST dataset!
 def train_multitask(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
     # Load data
-    # Create the data and its corresponding datasets and dataloader
+    # Create the data and its corresponding datasets and dataloader:
     (
         sst_train_data,
         num_labels,
@@ -144,6 +154,7 @@ def train_multitask(args):
         args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, split="train"
     )
 
+    # SST dataset
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
 
@@ -160,7 +171,7 @@ def train_multitask(args):
     ### TODO
     #   Load data for the other datasets
     # If you are doing the paraphrase type detection with the minBERT model as well, make sure
-    # to transform the the data labels into binarys (as required in the bart_detection.py script)
+    # to transform the the data labels into binaries (as required in the bart_detection.py script)
 
     # Init model
     config = {
@@ -188,7 +199,7 @@ def train_multitask(args):
         num_batches = 0
 
         if args.task == "sst" or args.task == "multitask":
-            # trains the model on the sst dataset
+            # Train the model on the sst dataset.
 
             for batch in tqdm(sst_train_dataloader, desc=f"train-{epoch}", disable=TQDM_DISABLE):
                 b_ids, b_mask, b_labels = (
@@ -203,8 +214,7 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
                 logits = model.predict_sentiment(b_ids, b_mask)
-                loss = F.cross_entropy(logits, b_labels.view(-1), reduction="sum") / args.batch_size
-
+                loss = F.cross_entropy(logits, b_labels.view(-1))
                 loss.backward()
                 optimizer.step()
 
@@ -251,11 +261,13 @@ def test_model(args):
         model = model.to(device)
         print(f"Loaded model to test from {args.filepath}")
 
-        test_model_multitask(args, model, device)
+        return test_model_multitask(args, model, device)
 
 
 def get_args():
     parser = argparse.ArgumentParser()
+
+    # Dataset paths
     parser.add_argument("--sst_train", type=str, default="data/sst-sentiment-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/sst-sentiment-dev.csv")
     parser.add_argument("--sst_test", type=str, default="data/sst-sentiment-test-student.csv")
@@ -268,24 +280,15 @@ def get_args():
     parser.add_argument("--sts_dev", type=str, default="data/sts-similarity-dev.csv")
     parser.add_argument("--sts_test", type=str, default="data/sts-similarity-test-student.csv")
 
-    # You should split the traindata into a train and dev set first and change the default path of the --etpc_dev argument to your dev set
+    # You should split the train data into a train and dev set first and change the
+    # default path of the --etpc_dev argument to your dev set.
     parser.add_argument("--etpc_train", type=str, default="data/etpc-paraphrase-train.csv")
     parser.add_argument("--etpc_dev", type=str, default="data/etpc-paraphrase-train.csv")
     parser.add_argument(
         "--etpc_test", type=str, default="data/etpc-paraphrase-detection-test-student.csv"
     )
 
-    parser.add_argument("--seed", type=int, default=11711)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument(
-        "--option",
-        type=str,
-        help="pretrain: the BERT parameters are frozen; finetune: BERT parameters are updated",
-        choices=("pretrain", "finetune"),
-        default="finetune",
-    )
-    parser.add_argument("--use_gpu", action="store_true")
-
+    # Output paths
     parser.add_argument(
         "--sst_dev_out", type=str, default="predictions/bert/sst-sentiment-dev-output.csv"
     )
@@ -318,7 +321,19 @@ def get_args():
         default="predictions/bert/etpc-paraphrase-detection-test-output.csv",
     )
 
-    # hyper parametersDie
+    # Model configuration
+    parser.add_argument("--seed", type=int, default=11711)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument(
+        "--option",
+        type=str,
+        help="pretrain: the BERT parameters are frozen; finetune: BERT parameters are updated",
+        choices=("pretrain", "finetune"),
+        default="finetune",
+    )
+    parser.add_argument("--use_gpu", action="store_true")
+
+    # Hyperparameters
     parser.add_argument("--batch_size", help="sst: 64 can fit a 12GB GPU", type=int, default=64)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
     parser.add_argument(
@@ -329,7 +344,7 @@ def get_args():
     )
     parser.add_argument("--local_files_only", action="store_true")
 
-    # training task
+    # Training task
     parser.add_argument(
         "--task",
         type=str,
@@ -344,7 +359,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f"{args.option}-{args.epochs}-{args.lr}-multitask.pt"  # save path
+    args.filepath = f"{args.option}-{args.epochs}-{args.lr}-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
     test_model(args)
