@@ -1,10 +1,13 @@
-import random, numpy as np, argparse, pandas as pd
+import argparse
+import random
+
+import numpy as np
+import pandas as pd
 import torch
-from transformers import BartModel
+from sklearn.metrics import accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
-from transformers import AutoTokenizer, AdamW
-from sklearn.metrics import accuracy_score
+from transformers import AdamW, AutoTokenizer, BartModel
 
 
 class BartWithClassifier(nn.Module):

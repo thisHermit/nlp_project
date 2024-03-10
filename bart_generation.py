@@ -1,9 +1,12 @@
-import random, numpy as np, argparse, pandas as pd
+import argparse
+import random
+
+import numpy as np
+import pandas as pd
 import torch
-from transformers import BartForConditionalGeneration
-from torch.utils.data import DataLoader, TensorDataset
-from transformers import AutoTokenizer, AdamW
 from sacrebleu.metrics import BLEU
+from torch.utils.data import DataLoader, TensorDataset
+from transformers import AdamW, AutoTokenizer, BartForConditionalGeneration
 
 
 def transform_data(dataset, max_length=256):

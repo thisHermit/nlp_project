@@ -1,6 +1,7 @@
-import torch
-import numpy as np
 import sys
+
+import numpy as np
+import torch
 
 sys.path.append("../")
 from optimizer import AdamW

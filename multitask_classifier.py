@@ -1,24 +1,26 @@
-import time, random, numpy as np, argparse, sys, re, os
+import argparse
+import os
+import random
+import re
+import sys
+import time
 from types import SimpleNamespace
 
+import numpy as np
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader
-
-from bert import BertModel
-from optimizer import AdamW
 from tqdm import tqdm
 
+from bert import BertModel
 from datasets import (
     SentenceClassificationDataset,
     SentencePairDataset,
     load_multitask_data,
-    load_multitask_test_data,
 )
-
 from evaluation import model_eval_multitask, test_model_multitask
-
+from optimizer import AdamW
 
 TQDM_DISABLE = True
 
@@ -129,10 +131,14 @@ def train_multitask(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
     # Load data
     # Create the data and its corresponding datasets and dataloader
-    sst_train_data, num_labels, quora_train_data, sts_train_data, etpc_train_data = (
-        load_multitask_data(
-            args.sst_train, args.quora_train, args.sts_train, args.etpc_train, split="train"
-        )
+    (
+        sst_train_data,
+        num_labels,
+        quora_train_data,
+        sts_train_data,
+        etpc_train_data,
+    ) = load_multitask_data(
+        args.sst_train, args.quora_train, args.sts_train, args.etpc_train, split="train"
     )
     sst_dev_data, num_labels, quora_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(
         args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, split="train"

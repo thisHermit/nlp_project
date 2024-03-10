@@ -15,20 +15,18 @@ so unless you change it you shouldn't need to call anything from here
 explicitly aside from model_eval_multitask.
 """
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import numpy as np
 
 from datasets import (
-    load_multitask_data,
-    load_multitask_test_data,
     SentenceClassificationDataset,
     SentenceClassificationTestDataset,
     SentencePairDataset,
     SentencePairTestDataset,
+    load_multitask_data,
 )
-
 
 TQDM_DISABLE = True
 
@@ -46,9 +44,7 @@ def model_eval_multitask(
 
         # Evaluate paraphrase detection.
         if task == "qqp" or task == "multitask":
-            for step, batch in enumerate(
-                tqdm(quora_dataloader, desc=f"eval", disable=TQDM_DISABLE)
-            ):
+            for step, batch in enumerate(tqdm(quora_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_labels, b_sent_ids) = (
                     batch["token_ids_1"],
                     batch["attention_mask_1"],
@@ -82,7 +78,7 @@ def model_eval_multitask(
 
         # Evaluate semantic textual similarity.
         if task == "sts" or task == "multitask":
-            for step, batch in enumerate(tqdm(sts_dataloader, desc=f"eval", disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(sts_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_labels, b_sent_ids) = (
                     batch["token_ids_1"],
                     batch["attention_mask_1"],
@@ -117,7 +113,7 @@ def model_eval_multitask(
 
         # Evaluate sentiment classification.
         if task == "sst" or task == "multitask":
-            for step, batch in enumerate(tqdm(sst_dataloader, desc=f"eval", disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(sst_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_labels, b_sent_ids = (
                     batch["token_ids"],
                     batch["attention_mask"],
@@ -147,7 +143,7 @@ def model_eval_multitask(
 
         # Evaluate paraphrase type detection.
         if task == "etpc" or task == "multitask":
-            for step, batch in enumerate(tqdm(etpc_dataloader, desc=f"eval", disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(etpc_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_labels, b_sent_ids) = (
                     batch["token_ids_1"],
                     batch["attention_mask_1"],
@@ -210,14 +206,11 @@ def model_eval_test_multitask(
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
     with torch.no_grad():
-
         quora_y_pred = []
         quora_sent_ids = []
         # Evaluate paraphrase detection.
         if task == "qqp" or task == "multitask":
-            for step, batch in enumerate(
-                tqdm(quora_dataloader, desc=f"eval", disable=TQDM_DISABLE)
-            ):
+            for step, batch in enumerate(tqdm(quora_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_sent_ids) = (
                     batch["token_ids_1"],
                     batch["attention_mask_1"],
@@ -242,7 +235,7 @@ def model_eval_test_multitask(
 
         # Evaluate semantic textual similarity.
         if task == "sts" or task == "multitask":
-            for step, batch in enumerate(tqdm(sts_dataloader, desc=f"eval", disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(sts_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_sent_ids) = (
                     batch["token_ids_1"],
                     batch["attention_mask_1"],
@@ -267,7 +260,7 @@ def model_eval_test_multitask(
 
         # Evaluate sentiment classification.
         if task == "sst" or task == "multitask":
-            for step, batch in enumerate(tqdm(sst_dataloader, desc=f"eval", disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(sst_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_sent_ids = (
                     batch["token_ids"],
                     batch["attention_mask"],
@@ -286,7 +279,7 @@ def model_eval_test_multitask(
         etpc_y_pred = []
         etpc_sent_ids = []
         if task == "etpc" or task == "multitask":
-            for step, batch in enumerate(tqdm(etpc_dataloader, desc=f"eval", disable=TQDM_DISABLE)):
+            for step, batch in enumerate(tqdm(etpc_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_sent_ids) = (
                     batch["token_ids_1"],
                     batch["attention_mask_1"],
@@ -426,47 +419,47 @@ def test_model_multitask(args, model, device):
     if task == "sst" or task == "multitask":
         with open(args.sst_dev_out, "w+") as f:
             print(f"dev sentiment acc :: {dev_sst_accuracy :.3f}")
-            f.write(f"id,Predicted_Sentiment\n")
+            f.write("id,Predicted_Sentiment\n")
             for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
                 f.write(f"{p},{s}\n")
 
         with open(args.sst_test_out, "w+") as f:
-            f.write(f"id,Predicted_Sentiment\n")
+            f.write("id,Predicted_Sentiment\n")
             for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
                 f.write(f"{p},{s}\n")
 
     if task == "qqp" or task == "multitask":
         with open(args.quora_dev_out, "w+") as f:
             print(f"dev paraphrase acc :: {dev_quora_accuracy :.3f}")
-            f.write(f"id,Predicted_Is_Paraphrase\n")
+            f.write("id,Predicted_Is_Paraphrase\n")
             for p, s in zip(dev_quora_sent_ids, dev_quora_y_pred):
-                f.write(f"{p},{s}\n")
+                f.write("{p},{s}\n")
 
         with open(args.quora_test_out, "w+") as f:
-            f.write(f"id,Predicted_Is_Paraphrase\n")
+            f.write("id,Predicted_Is_Paraphrase\n")
             for p, s in zip(test_quora_sent_ids, test_quora_y_pred):
                 f.write(f"{p},{s}\n")
 
     if task == "sts" or task == "multitask":
         with open(args.sts_dev_out, "w+") as f:
             print(f"dev sts corr :: {dev_sts_corr :.3f}")
-            f.write(f"id,Predicted_Similarity\n")
+            f.write("id,Predicted_Similarity\n")
             for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
                 f.write(f"{p},{s}\n")
 
         with open(args.sts_test_out, "w+") as f:
-            f.write(f"id,Predicted_Similarity\n")
+            f.write("id,Predicted_Similarity\n")
             for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
                 f.write(f"{p},{s}\n")
 
     if task == "etpc" or task == "multitask":
         with open(args.etpc_dev_out, "w+") as f:
             print(f"dev etpc acc :: {dev_etpc_accuracy :.3f}")
-            f.write(f"id,Predicted_Paraphrase_Types\n")
+            f.write("id,Predicted_Paraphrase_Types\n")
             for p, s in zip(dev_etpc_sent_ids, dev_etpc_y_pred):
                 f.write(f"{p},{s}\n")
 
         with open(args.etpc_test_out, "w+") as f:
-            f.write(f"id,Predicted_Paraphrase_Types\n")
+            f.write("id,Predicted_Paraphrase_Types\n")
             for p, s in zip(test_etpc_sent_ids, test_etpc_y_pred):
                 f.write(f"{p},{s}\n")

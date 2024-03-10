@@ -1,5 +1,5 @@
-from typing import Callable, Iterable, Tuple
 import math
+from typing import Callable, Iterable, Tuple
 
 import torch
 from torch.optim import Optimizer

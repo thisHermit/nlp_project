@@ -1,9 +1,11 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from base_bert import BertPreTrainedModel
-from utils import *
+from utils import get_extended_attention_mask
 
 
 class BertSelfAttention(nn.Module):

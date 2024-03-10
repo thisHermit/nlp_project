@@ -3,7 +3,6 @@
 import os
 import zipfile
 
-
 # Collect predictions
 required_files = []
 for root, dirs, files in os.walk("predictions"):

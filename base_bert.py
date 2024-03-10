@@ -1,7 +1,17 @@
+import os
 import re
-from torch import dtype
+
+import torch
+from torch import dtype, nn
+
 from config import BertConfig, PretrainedConfig
-from utils import *
+from utils import (
+    WEIGHTS_NAME,
+    cached_path,
+    get_parameter_dtype,
+    hf_bucket_url,
+    is_remote_url,
+)
 
 
 class BertPreTrainedModel(nn.Module):
@@ -37,7 +47,7 @@ class BertPreTrainedModel(nn.Module):
 
     @classmethod
     def from_pretrained(
-        cls, pretrained_model_name_or_path: Optional[Union[str, os.PathLike]], *model_args, **kwargs
+        cls, pretrained_model_name_or_path: str | os.PathLike, *model_args, **kwargs
     ):
         config = kwargs.pop("config", None)
         state_dict = kwargs.pop("state_dict", None)
@@ -98,7 +108,7 @@ class BertPreTrainedModel(nn.Module):
                     local_files_only=local_files_only,
                     use_auth_token=use_auth_token,
                 )
-            except EnvironmentError as err:
+            except EnvironmentError:
                 # logger.error(err)
                 msg = (
                     f"Can't load weights for '{pretrained_model_name_or_path}'. Make sure that:\n\n"
