@@ -314,11 +314,11 @@ def model_eval_test_multitask(
 
 
 def test_model_multitask(args, model, device):
-    sst_test_data, num_labels, quora_test_data, sts_test_data, etpc_test_data = load_multitask_data(
+    sst_test_data, _, quora_test_data, sts_test_data, etpc_test_data = load_multitask_data(
         args.sst_test, args.quora_test, args.sts_test, args.etpc_test, split="test"
     )
 
-    sst_dev_data, num_labels, quora_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(
+    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(
         args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, split="dev"
     )
 
