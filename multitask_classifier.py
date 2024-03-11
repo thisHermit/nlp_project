@@ -1,5 +1,6 @@
 import argparse
 import os
+from pprint import pformat
 import random
 import re
 import sys
@@ -69,7 +70,8 @@ class MultitaskBERT(nn.Module):
     def forward(self, input_ids, attention_mask):
         """Takes a batch of sentences and produces embeddings for them."""
 
-        # The final BERT embedding is the hidden state of [CLS] token (the first token)
+        # The final BERT embedding is the hidden state of [CLS] token (the first token).
+        # See BertModel.forward() for more details.
         # Here, you can start by just returning the embeddings straight from BERT.
         # When thinking of improvements, you can later try modifying this
         # (e.g., by adding other layers).
@@ -133,7 +135,7 @@ def save_model(model, optimizer, args, config, filepath):
     }
 
     torch.save(save_info, filepath)
-    print(f"save the model to {filepath}")
+    print(f"Saving the model to {filepath}.")
 
 
 # TODO Currently only trains on SST dataset!
@@ -141,32 +143,39 @@ def train_multitask(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
     # Load data
     # Create the data and its corresponding datasets and dataloader:
-    (
-        sst_train_data,
-        num_labels,
-        quora_train_data,
-        sts_train_data,
-        etpc_train_data,
-    ) = load_multitask_data(
+    sst_train_data, _, quora_train_data, sts_train_data, etpc_train_data = load_multitask_data(
         args.sst_train, args.quora_train, args.sts_train, args.etpc_train, split="train"
     )
-    sst_dev_data, num_labels, quora_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(
+    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(
         args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, split="train"
     )
 
-    # SST dataset
-    sst_train_data = SentenceClassificationDataset(sst_train_data, args)
-    sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
+    sst_train_dataloader = None
+    sst_dev_dataloader = None
+    quora_train_dataloader = None
+    quora_dev_dataloader = None
+    sts_train_dataloader = None
+    sts_dev_dataloader = None
+    etpc_train_dataloader = None
+    etpc_dev_dataloader = None
 
-    sst_train_dataloader = DataLoader(
-        sst_train_data,
-        shuffle=True,
-        batch_size=args.batch_size,
-        collate_fn=sst_train_data.collate_fn,
-    )
-    sst_dev_dataloader = DataLoader(
-        sst_dev_data, shuffle=False, batch_size=args.batch_size, collate_fn=sst_dev_data.collate_fn
-    )
+    # SST dataset
+    if args.task == "sst" or args.task == "multitask":
+        sst_train_data = SentenceClassificationDataset(sst_train_data, args)
+        sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
+
+        sst_train_dataloader = DataLoader(
+            sst_train_data,
+            shuffle=True,
+            batch_size=args.batch_size,
+            collate_fn=sst_train_data.collate_fn,
+        )
+        sst_dev_dataloader = DataLoader(
+            sst_dev_data,
+            shuffle=False,
+            batch_size=args.batch_size,
+            collate_fn=sst_dev_data.collate_fn,
+        )
 
     ### TODO
     #   Load data for the other datasets
@@ -176,8 +185,7 @@ def train_multitask(args):
     # Init model
     config = {
         "hidden_dropout_prob": args.hidden_dropout_prob,
-        "num_labels": num_labels,
-        "hidden_size": 768,
+        "hidden_size": BERT_HIDDEN_SIZE,
         "data_dir": ".",
         "option": args.option,
         "local_files_only": args.local_files_only,
@@ -185,12 +193,19 @@ def train_multitask(args):
 
     config = SimpleNamespace(**config)
 
+    separator = "-" * 30
+    print(separator)
+    print("    BERT Model Configuration")
+    print(separator)
+    print(pformat({k: v for k, v in vars(args).items() if "csv" not in str(v)}))
+    print(separator)
+
     model = MultitaskBERT(config)
     model = model.to(device)
 
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
-    best_dev_acc = 0
+    best_dev_acc = float("-inf")
 
     # Run for the specified number of epochs
     for epoch in range(args.epochs):
@@ -201,7 +216,9 @@ def train_multitask(args):
         if args.task == "sst" or args.task == "multitask":
             # Train the model on the sst dataset.
 
-            for batch in tqdm(sst_train_dataloader, desc=f"train-{epoch}", disable=TQDM_DISABLE):
+            for batch in tqdm(
+                sst_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
+            ):
                 b_ids, b_mask, b_labels = (
                     batch["token_ids"],
                     batch["attention_mask"],
@@ -221,19 +238,6 @@ def train_multitask(args):
                 train_loss += loss.item()
                 num_batches += 1
 
-            train_loss = train_loss / (num_batches)
-
-            train_acc = list(model_eval_multitask(sst_train_dataloader, model, device, "sst"))[4]
-            dev_acc = list(model_eval_multitask(sst_dev_dataloader, model, device, "sst"))[4]
-
-            if dev_acc > best_dev_acc:
-                best_dev_acc = dev_acc
-                save_model(model, optimizer, args, config, args.filepath)
-
-            print(
-                f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {train_acc :.3f}, dev acc :: {dev_acc :.3f}"
-            )
-
         if args.task == "sts" or args.task == "multitask":
             # Trains the model on the sts dataset
             ### TODO
@@ -248,6 +252,49 @@ def train_multitask(args):
             # Trains the model on the etpc dataset
             ### TODO
             raise NotImplementedError
+
+        train_loss = train_loss / num_batches
+
+        quora_train_acc, _, _, sst_train_acc, _, _, sts_train_corr, _, _, etpc_train_acc, _, _ = (
+            model_eval_multitask(
+                sst_train_dataloader,
+                quora_train_dataloader,
+                sts_train_dataloader,
+                etpc_train_dataloader,
+                model=model,
+                device=device,
+                task=args.task,
+            )
+        )
+
+        quora_dev_acc, _, _, sst_dev_acc, _, _, sts_dev_corr, _, _, etpc_dev_acc, _, _ = (
+            model_eval_multitask(
+                sst_dev_dataloader,
+                quora_dev_dataloader,
+                sts_dev_dataloader,
+                etpc_dev_dataloader,
+                model=model,
+                device=device,
+                task=args.task,
+            )
+        )
+
+        train_acc, dev_acc = {
+            "sst": (sst_train_acc, sst_dev_acc),
+            "sts": (sts_train_corr, sts_dev_corr),
+            "qqp": (quora_train_acc, quora_dev_acc),
+            "etpc": (etpc_train_acc, etpc_dev_acc),
+            "multitask": (0, 0),  # TODO
+        }[args.task]
+
+        print(
+            f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train acc :: {train_acc:.3f}, dev acc :: {dev_acc:.3f}"
+        )
+         
+        if dev_acc > best_dev_acc:
+            best_dev_acc = dev_acc
+            save_model(model, optimizer, args, config, args.filepath)
+
 
 
 def test_model(args):
@@ -329,9 +376,11 @@ def get_args():
         type=str,
         help="pretrain: the BERT parameters are frozen; finetune: BERT parameters are updated",
         choices=("pretrain", "finetune"),
-        default="finetune",
+        default="pretrain",
     )
     parser.add_argument("--use_gpu", action="store_true")
+
+    args, _ = parser.parse_known_args()
 
     # Hyperparameters
     parser.add_argument("--batch_size", help="sst: 64 can fit a 12GB GPU", type=int, default=64)
@@ -340,7 +389,7 @@ def get_args():
         "--lr",
         type=float,
         help="learning rate, default lr for 'pretrain': 1e-3, 'finetune': 1e-5",
-        default=1e-3,
+        default=1e-3 if args.option == "pretrain" else 1e-5,
     )
     parser.add_argument("--local_files_only", action="store_true")
 
@@ -359,7 +408,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f"{args.option}-{args.epochs}-{args.lr}-{args.task}.pt"  # save path
+    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
     test_model(args)

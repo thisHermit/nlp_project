@@ -183,20 +183,22 @@ def model_eval_multitask(
         if task == "etpc" or task == "multitask":
             print(f"Paraphrase Type detection accuracy: {etpc_accuracy:.3f}")
 
-        return (
-            quora_accuracy,
-            quora_y_pred,
-            quora_sent_ids,
-            sst_accuracy,
-            sst_y_pred,
-            sst_sent_ids,
-            sts_corr,
-            sts_y_pred,
-            sts_sent_ids,
-            etpc_accuracy,
-            etpc_y_pred,
-            etpc_sent_ids,
-        )
+    model.train()  # switch back to train model
+
+    return (
+        quora_accuracy,
+        quora_y_pred,
+        quora_sent_ids,
+        sst_accuracy,
+        sst_y_pred,
+        sst_sent_ids,
+        sts_corr,
+        sts_y_pred,
+        sts_sent_ids,
+        etpc_accuracy,
+        etpc_y_pred,
+        etpc_sent_ids,
+    )
 
 
 # Perform model evaluation in terms by averaging accuracies across tasks.
