@@ -4,24 +4,31 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
-from transformers import AdamW, AutoTokenizer, BartModel
+from transformers import AutoTokenizer, BartModel
+
+from optimizer import AdamW
 
 
 class BartWithClassifier(nn.Module):
-    def __init__(self, model_name="facebook/bart-large", num_labels=7):
+    def __init__(self, num_labels=7):
         super(BartWithClassifier, self).__init__()
-        self.bart = BartModel.from_pretrained(model_name)
+
+        self.bart = BartModel.from_pretrained("facebook/bart-large")
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, input_ids, attention_mask=None):
+        # Use the BartModel to obtain the last hidden state
         outputs = self.bart(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = outputs.last_hidden_state
         cls_output = last_hidden_state[:, 0, :]
+
+        # Add an additional fully connected layer to obtain the logits
         logits = self.classifier(cls_output)
+
+        # Return the probabilities
         probabilities = self.sigmoid(logits)
         return probabilities
 
@@ -67,16 +74,18 @@ def evaluate_model(model, test_data, device):
     all_pred = []
     all_labels = []
     model.eval()
-    for batch in test_data:
-        input_ids, attention_mask, labels = batch
-        input_ids = input_ids.to(device)
-        attention_mask = attention_mask.to(device)
 
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        predicted_labels = (outputs > 0.5).int()
+    with torch.no_grad():
+        for batch in test_data:
+            input_ids, attention_mask, labels = batch
+            input_ids = input_ids.to(device)
+            attention_mask = attention_mask.to(device)
 
-        all_pred.append(predicted_labels)
-        all_labels.append(labels)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            predicted_labels = (outputs > 0.5).int()
+
+            all_pred.append(predicted_labels)
+            all_labels.append(labels)
 
     all_predictions = torch.cat(all_pred, dim=0)
     all_true_labels = torch.cat(all_labels, dim=0)
@@ -84,14 +93,19 @@ def evaluate_model(model, test_data, device):
     true_labels_np = all_true_labels.cpu().numpy()
     predicted_labels_np = all_predictions.cpu().numpy()
 
+    # Compute the accuracy for each label
     accuracies = []
     for label_idx in range(true_labels_np.shape[1]):
-        label_accuracy = accuracy_score(
-            true_labels_np[:, label_idx], predicted_labels_np[:, label_idx]
+        correct_predictions = np.sum(
+            true_labels_np[:, label_idx] == predicted_labels_np[:, label_idx]
         )
+        total_predictions = true_labels_np.shape[0]
+        label_accuracy = correct_predictions / total_predictions
         accuracies.append(label_accuracy)
 
+    # Calculate the average accuracy over all labels
     accuracy = np.mean(accuracies)
+    model.train()
     return accuracy
 
 
@@ -121,8 +135,8 @@ def finetune_paraphrase_detection(args):
     train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-detection-test-student.csv", sep="\t")
 
-    # You might do a split of the train data into train/validation set here
-    # ...
+    # TODO You might do a split of the train data into train/validation set here
+    # (or in the csv files directly)
     train_data = transform_data(train_dataset)
     test_data = transform_data(test_dataset)
 
