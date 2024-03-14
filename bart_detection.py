@@ -118,8 +118,8 @@ def finetune_paraphrase_detection(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
     model.to(device)
 
-    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv")
-    test_dataset = pd.read_csv("data/etpc-paraphrase-detection-test-student.csv")
+    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
+    test_dataset = pd.read_csv("data/etpc-paraphrase-detection-test-student.csv", sep="\t")
 
     # You might do a split of the train data into train/validation set here
     # ...
@@ -132,7 +132,7 @@ def finetune_paraphrase_detection(args):
     print("The accuracy of the Model is: ", accuracy)
 
     test_results = test_model(model, test_data, device)
-    test_results.to_csv("predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False)
+    test_results.to_csv("predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False, sep="\t")
 
 
 if __name__ == "__main__":
