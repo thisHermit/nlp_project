@@ -1,10 +1,12 @@
 # DNLP suggestions
-models
-*.pt
-logdir
 *.ckpt
-slurm_files
+*.pt
 *.pyc
+*.zip
+*output*
+logdir
+models
+slurm_files
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
