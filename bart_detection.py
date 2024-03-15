@@ -166,8 +166,10 @@ def finetune_paraphrase_detection(args):
 
     model = train_model(model, train_data, dev_data, device)
 
+    print("Training finished.")
+
     accuracy = evaluate_model(model, dev_data, device)
-    print("The accuracy of the model is: ", accuracy)
+    print(f"The accuracy of the model is: {accuracy:.3f}")
 
     test_ids = test_dataset["id"]
     test_results = test_model(model, test_data, test_ids, device)

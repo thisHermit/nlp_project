@@ -129,8 +129,10 @@ def finetune_paraphrase_generation(args):
 
     model = train_model(model, train_data, dev_data, device, tokenizer)
 
+    print("Training finished.")
+
     bleu_score = evaluate_model(model, dev_data, device, tokenizer)
-    print("The BLEU-score of the model is: ", bleu_score)
+    print(f"The BLEU-score of the model is: {bleu_score:.3f}")
 
     test_ids = test_dataset["id"]
     test_results = test_model(test_data, test_ids, device, model, tokenizer)
