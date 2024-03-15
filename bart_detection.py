@@ -6,9 +6,13 @@ import pandas as pd
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 from transformers import AutoTokenizer, BartModel
 
 from optimizer import AdamW
+
+
+TQDM_DISABLE = False
 
 
 class BartWithClassifier(nn.Module):
@@ -35,24 +39,42 @@ class BartWithClassifier(nn.Module):
 
 def transform_data(dataset, max_length=512):
     """
+    dataset: pd.DataFrame
+
     Turn the data to the format you want to use.
-    Use sentences segment location and sentences.
-    Use AutoTokenizer to obtain encoding (input_ids and attention_mask).
-    Turn labels to the binary form (ex. [2, 5, 6, 0, 0, 0, 0] -> [0, 1, 0, 0, 1, 1, 0]).
-    Return Data Loader.
+
+    1. Extract the sentences from the dataset. We recommend using the already split
+    sentences in the dataset.
+    2. Use the AutoTokenizer from_pretrained to tokenize the sentences and obtain the
+    input_ids and attention_mask.
+    3. Currently, the labels are in the form of [2, 5, 6, 0, 0, 0, 0]. This means that
+    the sentence pair is of type 2, 5, and 6. Turn this into a binary form, where the
+    label becomes [0, 1, 0, 0, 1, 1, 0]. Be careful that the test-student.csv does not
+    have the paraphrase_types column. You should return a DataLoader without the labels.
+    4. Use the input_ids, attention_mask, and binary labels to create a TensorDataset.
+    Return a DataLoader with the TensorDataset. You can choose a batch size of your
+    choice.
     """
     raise NotImplementedError
 
 
-def train_model(model, train_data, device):
+def train_model(model, train_data, dev_data, device):
     """
-    Train the model. Return the model.
+    Train the model. You can use any training loop you want. We recommend starting with
+    AdamW as your optimizer. You can take a look at the SST training loop for reference.
+    Think about your loss function and the number of epochs you want to train for.
+    You can also use the evaluate_model function to evaluate the
+    model on the dev set. Print the training loss, training accuracy, and dev accuracy at
+    the end of each epoch.
+
+    Return the trained model.
     """
     ### TODO
     raise NotImplementedError
 
 
-def test_model(model, test_data, device):
+
+def test_model(model, test_data, test_ids, device):
     """
     Test the model. Predict the paraphrase types for the given sentences and return the results in form of
     a Pandas dataframe with the columns 'id' and 'Predicted_Paraphrase_Types'.
@@ -140,13 +162,18 @@ def finetune_paraphrase_detection(args):
     train_data = transform_data(train_dataset)
     test_data = transform_data(test_dataset)
 
-    model = train_model(model, train_data, device)
+    print(f"Loaded {len(train_dataset)} training samples.")
 
-    accuracy = evaluate_model(model, train_data, device)
-    print("The accuracy of the Model is: ", accuracy)
+    model = train_model(model, train_data, dev_data, device)
 
-    test_results = test_model(model, test_data, device)
-    test_results.to_csv("predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False, sep="\t")
+    accuracy = evaluate_model(model, dev_data, device)
+    print("The accuracy of the model is: ", accuracy)
+
+    test_ids = test_dataset["id"]
+    test_results = test_model(model, test_data, test_ids, device)
+    test_results.to_csv(
+        "predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False, sep="\t"
+    )
 
 
 if __name__ == "__main__":
