@@ -435,7 +435,7 @@ def test_model_multitask(args, model, device):
             print(f"dev paraphrase acc :: {dev_quora_accuracy :.3f}")
             f.write("id,Predicted_Is_Paraphrase\n")
             for p, s in zip(dev_quora_sent_ids, dev_quora_y_pred):
-                f.write("{p},{s}\n")
+                f.write(f"{p},{s}\n")
 
         with open(args.quora_test_out, "w+") as f:
             f.write("id,Predicted_Is_Paraphrase\n")
