@@ -323,7 +323,7 @@ def load_multitask_data(sst_filename, quora_filename, sts_filename, etpc_filenam
     etpc_data = []
     if split == "test":
         with open(etpc_filename, "r", encoding="utf-8") as fp:
-            for record in csv.DictReader(fp, delimiter=","):
+            for record in csv.DictReader(fp, delimiter="\t"):
                 sent_id = record["id"].lower().strip()
                 etpc_data.append(
                     (
@@ -335,7 +335,7 @@ def load_multitask_data(sst_filename, quora_filename, sts_filename, etpc_filenam
 
     else:
         with open(etpc_filename, "r", encoding="utf-8") as fp:
-            for record in csv.DictReader(fp, delimiter=","):
+            for record in csv.DictReader(fp, delimiter="\t"):
                 try:
                     sent_id = record["id"].lower().strip()
                     etpc_data.append(
