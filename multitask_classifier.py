@@ -313,58 +313,13 @@ def test_model(args):
 def get_args():
     parser = argparse.ArgumentParser()
 
-    # Dataset paths
-    parser.add_argument("--sst_train", type=str, default="data/sst-sentiment-train.csv")
-    parser.add_argument("--sst_dev", type=str, default="data/sst-sentiment-dev.csv")
-    parser.add_argument("--sst_test", type=str, default="data/sst-sentiment-test-student.csv")
-
-    parser.add_argument("--quora_train", type=str, default="data/quora-paraphrase-train.csv")
-    parser.add_argument("--quora_dev", type=str, default="data/quora-paraphrase-dev.csv")
-    parser.add_argument("--quora_test", type=str, default="data/quora-paraphrase-test-student.csv")
-
-    parser.add_argument("--sts_train", type=str, default="data/sts-similarity-train.csv")
-    parser.add_argument("--sts_dev", type=str, default="data/sts-similarity-dev.csv")
-    parser.add_argument("--sts_test", type=str, default="data/sts-similarity-test-student.csv")
-
-    # You should split the train data into a train and dev set first and change the
-    # default path of the --etpc_dev argument to your dev set.
-    parser.add_argument("--etpc_train", type=str, default="data/etpc-paraphrase-train.csv")
-    parser.add_argument("--etpc_dev", type=str, default="data/etpc-paraphrase-train.csv")
+    # Training task
     parser.add_argument(
-        "--etpc_test", type=str, default="data/etpc-paraphrase-detection-test-student.csv"
-    )
-
-    # Output paths
-    parser.add_argument(
-        "--sst_dev_out", type=str, default="predictions/bert/sst-sentiment-dev-output.csv"
-    )
-    parser.add_argument(
-        "--sst_test_out", type=str, default="predictions/bert/sst-sentiment-test-output.csv"
-    )
-
-    parser.add_argument(
-        "--quora_dev_out", type=str, default="predictions/bert/quora-paraphrase-dev-output.csv"
-    )
-    parser.add_argument(
-        "--quora_test_out", type=str, default="predictions/bert/quora-paraphrase-test-output.csv"
-    )
-
-    parser.add_argument(
-        "--sts_dev_out", type=str, default="predictions/bert/sts-similarity-dev-output.csv"
-    )
-    parser.add_argument(
-        "--sts_test_out", type=str, default="predictions/bert/sts-similarity-test-output.csv"
-    )
-
-    parser.add_argument(
-        "--etpc_dev_out",
+        "--task",
         type=str,
-        default="predictions/bert/etpc-paraphrase-detection-dev-output.csv",
-    )
-    parser.add_argument(
-        "--etpc_test_out",
-        type=str,
-        default="predictions/bert/etpc-paraphrase-detection-test-output.csv",
+        help='choose between "sst","sts","qqp","etpc","multitask" to train for different tasks ',
+        choices=("sst", "sts", "qqp", "etpc", "multitask"),
+        default="sst",
     )
 
     # Model configuration
@@ -381,6 +336,105 @@ def get_args():
 
     args, _ = parser.parse_known_args()
 
+    # Dataset paths
+    parser.add_argument("--sst_train", type=str, default="data/sst-sentiment-train.csv")
+    parser.add_argument("--sst_dev", type=str, default="data/sst-sentiment-dev.csv")
+    parser.add_argument("--sst_test", type=str, default="data/sst-sentiment-test-student.csv")
+
+    parser.add_argument("--quora_train", type=str, default="data/quora-paraphrase-train.csv")
+    parser.add_argument("--quora_dev", type=str, default="data/quora-paraphrase-dev.csv")
+    parser.add_argument("--quora_test", type=str, default="data/quora-paraphrase-test-student.csv")
+
+    parser.add_argument("--sts_train", type=str, default="data/sts-similarity-train.csv")
+    parser.add_argument("--sts_dev", type=str, default="data/sts-similarity-dev.csv")
+    parser.add_argument("--sts_test", type=str, default="data/sts-similarity-test-student.csv")
+
+    # TODO
+    # You should split the train data into a train and dev set first and change the
+    # default path of the --etpc_dev argument to your dev set.
+    parser.add_argument("--etpc_train", type=str, default="data/etpc-paraphrase-train.csv")
+    parser.add_argument("--etpc_dev", type=str, default="data/etpc-paraphrase-dev.csv")
+    parser.add_argument(
+        "--etpc_test", type=str, default="data/etpc-paraphrase-detection-test-student.csv"
+    )
+
+    # Output paths
+    parser.add_argument(
+        "--sst_dev_out",
+        type=str,
+        default=(
+            "predictions/bert/sst-sentiment-dev-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/sst-sentiment-dev-output.csv"
+        ),
+    )
+    parser.add_argument(
+        "--sst_test_out",
+        type=str,
+        default=(
+            "predictions/bert/sst-sentiment-test-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/sst-sentiment-test-output.csv"
+        ),
+    )
+
+    parser.add_argument(
+        "--quora_dev_out",
+        type=str,
+        default=(
+            "predictions/bert/quora-paraphrase-dev-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/quora-paraphrase-dev-output.csv"
+        ),
+    )
+    parser.add_argument(
+        "--quora_test_out",
+        type=str,
+        default=(
+            "predictions/bert/quora-paraphrase-test-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/quora-paraphrase-test-output.csv"
+        ),
+    )
+
+    parser.add_argument(
+        "--sts_dev_out",
+        type=str,
+        default=(
+            "predictions/bert/sts-similarity-dev-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/sts-similarity-dev-output.csv"
+        ),
+    )
+    parser.add_argument(
+        "--sts_test_out",
+        type=str,
+        default=(
+            "predictions/bert/sts-similarity-test-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/sts-similarity-test-output.csv"
+        ),
+    )
+
+    parser.add_argument(
+        "--etpc_dev_out",
+        type=str,
+        default=(
+            "predictions/bert/etpc-paraphrase-detection-dev-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/etpc-paraphrase-detection-dev-output.csv"
+        ),
+    )
+    parser.add_argument(
+        "--etpc_test_out",
+        type=str,
+        default=(
+            "predictions/bert/etpc-paraphrase-detection-test-output.csv"
+            if not args.task == "multitask"
+            else "predictions/bert/multitask/etpc-paraphrase-detection-test-output.csv"
+        ),
+    )
+
     # Hyperparameters
     parser.add_argument("--batch_size", help="sst: 64 can fit a 12GB GPU", type=int, default=64)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
@@ -391,15 +445,6 @@ def get_args():
         default=1e-3 if args.option == "pretrain" else 1e-5,
     )
     parser.add_argument("--local_files_only", action="store_true")
-
-    # Training task
-    parser.add_argument(
-        "--task",
-        type=str,
-        help='choose between "sst","sts","qqp","etpc","multitask" to train for different tasks ',
-        choices=("sst", "sts", "qqp", "etpc", "multitask"),
-        default="sst",
-    )
 
     args = parser.parse_args()
     return args
