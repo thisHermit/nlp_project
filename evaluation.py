@@ -171,6 +171,7 @@ def model_eval_multitask(
                 int
             )
             etpc_accuracy = np.mean(correct_pred)
+            etpc_y_pred = etpc_y_pred.tolist()
         else:
             etpc_accuracy = None
 
@@ -296,7 +297,7 @@ def model_eval_test_multitask(
                 b_mask2 = b_mask2.to(device)
 
                 logits = model.predict_paraphrase_types(b_ids1, b_mask1, b_ids2, b_mask2)
-                y_hat = logits.sigmoid().round().cpu().numpy().astype(int)
+                y_hat = logits.sigmoid().round().cpu().numpy().astype(int).tolist()
 
                 etpc_y_pred.extend(y_hat)
                 etpc_sent_ids.extend(b_sent_ids)
