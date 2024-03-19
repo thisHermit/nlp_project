@@ -20,7 +20,7 @@ def transform_data(dataset, max_length=256):
     Turn the data to the format you want to use.
     Use AutoTokenizer to obtain encoding (input_ids and attention_mask).
     Tokenize the sentence pair in the following format:
-    sentence_1 + SEP + Tokenized sentence_1 segment location + SEP + Tokenized paraphrase types.
+    sentence_1 + SEP + sentence_1 segment location + SEP + paraphrase types.
     Return Data Loader.
     """
     ### TODO
