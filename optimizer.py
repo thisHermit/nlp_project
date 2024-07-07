@@ -66,8 +66,31 @@ class AdamW(Optimizer):
                 # 3- Update parameters (p.data).
                 # 4- After that main gradient-based update, update again using weight decay
                 #    (incorporating the learning rate again).
+                if len(state) == 0:
+                    state["step"] = 0
+                    state["exp_avg"] = torch.zeros_like(p.data)
+                    state["exp_avg_sq"] = torch.zeros_like(p.data)
 
-                ### TODO
-                raise NotImplementedError
+                exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
+                beta1, beta2 = group["betas"]
+
+                state["step"] += 1
+                step_size = group["lr"]
+
+                # Update first and second moments of the gradients
+                exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+
+                # Bias correction
+                if group["correct_bias"]:
+                    bias_correction1 = 1 - beta1 ** state["step"]
+                    bias_correction2 = 1 - beta2 ** state["step"]
+                    step_size *= math.sqrt(bias_correction2) / bias_correction1
+                    
+                p.data.addcdiv_(exp_avg, exp_avg_sq.sqrt() + group["eps"], value=-step_size)
+
+                # Weight decay
+                if group["weight_decay"] != 0:
+                    p.data.add_(p.data, alpha=-group["lr"] * group["weight_decay"])
 
         return loss
