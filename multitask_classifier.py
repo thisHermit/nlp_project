@@ -65,7 +65,9 @@ class MultitaskBERT(nn.Module):
             elif config.option == "finetune":
                 param.requires_grad = True
         ### TODO
-        raise NotImplementedError
+        # raise NotImplementedError
+        self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+
 
     def forward(self, input_ids, attention_mask):
         """Takes a batch of sentences and produces embeddings for them."""
@@ -76,7 +78,12 @@ class MultitaskBERT(nn.Module):
         # When thinking of improvements, you can later try modifying this
         # (e.g., by adding other layers).
         ### TODO
-        raise NotImplementedError
+        # raise NotImplementedError
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        output_layer = bert_model['last_hidden_state'][:, 0, :]
+        # we can add an other layer that allows the model to be multi task
+        return output_layer
+
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -87,7 +94,12 @@ class MultitaskBERT(nn.Module):
         Dataset: SST
         """
         ### TODO
-        raise NotImplementedError
+        # raise NotImplementedError
+        bert_output = self.forward(input_ids, attention_mask)
+        sentiment_out = self.sentiment_linear(bert_output)
+        return sentiment_out
+
+
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         """
@@ -124,6 +136,14 @@ class MultitaskBERT(nn.Module):
 
 
 def save_model(model, optimizer, args, config, filepath):
+
+    # ---------------------------------------------------
+    # first run wherethe directory models doesn't exist
+    directory = os.path.dirname(filepath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # ---------------------------------------------------
     save_info = {
         "model": model.state_dict(),
         "optim": optimizer.state_dict(),

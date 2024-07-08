@@ -29,7 +29,7 @@ check_conda_env() {
         echo "Conda environment 'dnlp' already exists."
     else
         echo "Conda environment 'dnlp' does not exist. Creating environment..."
-        conda create -n dnlp python=3.8 -y
+        conda create -n dnlp python=3.10 -y
     fi
 }
 
