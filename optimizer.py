@@ -68,6 +68,36 @@ class AdamW(Optimizer):
                 #    (incorporating the learning rate again).
 
                 ### TODO
-                raise NotImplementedError
+                
+                # initilizations
+
+                if len(state) ==0:
+                    state["moment_m"] = torch.zeros_like(p.data)
+                    state["moment_v"] = torch.zeros_like(p.data)
+                    state["step_t"] = 0
+                    
+                state["step_t"] += 1
+                mt, vt =  state["moment_m"], state["moment_v"]
+                beta1, beta2 = group['betas']
+
+                # update first and second moments
+                mt.mul_(beta1).add_(grad, alpha=1 - beta1)
+                vt.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+
+                # corr_mt = mt / (beta1 ** state["step_t"])
+                # corr_vt = vt / (beta2 ** state["step_t"])
+
+                # efficient method update parameters
+                step_size = group["lr"] * math.sqrt(1 - beta2 ** state["step_t"]) / (1 - beta1 ** state["step_t"])
+                p.data.addcdiv_(mt , vt.sqrt().add_(group["eps"]) , value = - step_size )
+
+                # Apply weight decay
+                if group["weight_decay"] != 0:
+                    p.data.add_(p.data, alpha=-group["lr"] * group["weight_decay"])
+
+
+
+                
+                # raise NotImplementedError
 
         return loss
