@@ -139,6 +139,13 @@ class MultitaskBERT(nn.Module):
 
 
 def save_model(model, optimizer, args, config, filepath):
+    # ---------------------------------------------------
+    # first run wherethe directory models doesn't exist
+    directory = os.path.dirname(filepath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # ---------------------------------------------------
     save_info = {
         "model": model.state_dict(),
         "optim": optimizer.state_dict(),
@@ -274,7 +281,7 @@ def train_multitask(args):
         if args.task == "sts" or args.task == "multitask":
             # Trains the model on the sts dataset
             for batch in tqdm(
-                sts_dev_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
+                sts_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
             ):
                 input_ids_1, attention_mask_1, input_ids_2, attention_mask_2 ,labels = (
                     batch["token_ids_1"],
