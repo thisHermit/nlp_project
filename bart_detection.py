@@ -19,7 +19,7 @@ class BartWithClassifier(nn.Module):
     def __init__(self, num_labels=7):
         super(BartWithClassifier, self).__init__()
 
-        self.bart = BartModel.from_pretrained("facebook/bart-large")
+        self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True)
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
         self.sigmoid = nn.Sigmoid()
 
