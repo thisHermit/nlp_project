@@ -74,7 +74,7 @@ def transform_data(dataset, max_length=256):
         return dataloader
     except Exception as e:
         print(f"Error in transform_data: {e}")
-        raise NotImplementedError
+        # raise NotImplementedError
 
 
 def train_model(model, train_data, dev_data, device, tokenizer):
@@ -84,7 +84,7 @@ def train_model(model, train_data, dev_data, device, tokenizer):
     ### TODO
     try:
         optimizer = AdamW(model.parameters(), lr=5e-5)
-        num_epochs = 3
+        num_epochs = 1 # CHANGE ME
         
         for epoch in range(num_epochs):
             model.train()
@@ -116,7 +116,7 @@ def train_model(model, train_data, dev_data, device, tokenizer):
         return model
     except Exception as e:
         print(f"Error in train_model: {e}")
-        raise NotImplementedError
+        # raise NotImplementedError
 
 
 def test_model(test_data, test_ids, device, model, tokenizer):
@@ -158,8 +158,8 @@ def test_model(test_data, test_ids, device, model, tokenizer):
         return results_df
     except Exception as e:
         print(f"Error in test_model: {e}")
-        raise NotImplementedError
-    raise NotImplementedError
+    #     raise NotImplementedError
+    # raise NotImplementedError
 
 
 def evaluate_model(model, test_data, device, tokenizer):
@@ -230,8 +230,8 @@ def finetune_paraphrase_generation(args):
     model.to(device)
     tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
 
-    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
-    dev_dataset = pd.read_csv("data/etpc-paraphrase-dev.csv", sep="\t")
+    train_dataset = pd.read_csv("data/etpc-paraphrase-train-split.csv", sep="\t")
+    dev_dataset = pd.read_csv("data/etpc-paraphrase-dev-split.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-generation-test-student.csv", sep="\t")
 
     # You might do a split of the train data into train/validation set here
