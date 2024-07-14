@@ -65,7 +65,12 @@ class MultitaskBERT(nn.Module):
             elif config.option == "finetune":
                 param.requires_grad = True
         ### TODO
-        raise NotImplementedError
+        self.sts_head = nn.Sequential(
+            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
+            nn.ReLU(),
+            nn.Linear(BERT_HIDDEN_SIZE, 1)
+        )
+        # raise NotImplementedError
 
     def forward(self, input_ids, attention_mask):
         """Takes a batch of sentences and produces embeddings for them."""
@@ -75,8 +80,11 @@ class MultitaskBERT(nn.Module):
         # Here, you can start by just returning the embeddings straight from BERT.
         # When thinking of improvements, you can later try modifying this
         # (e.g., by adding other layers).
-        ### TODO
-        raise NotImplementedError
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        output_layer = bert_model['last_hidden_state'][:, 0, :]
+        return output_layer
+        # ### TODO
+        # raise NotImplementedError
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -106,8 +114,15 @@ class MultitaskBERT(nn.Module):
         it will be handled as a logit by the appropriate loss function.
         Dataset: STS
         """
-        ### TODO
-        raise NotImplementedError
+        # print(input_ids_1)
+        output_1 = self.forward(input_ids_1, attention_mask_1)
+        output_2 = self.forward(input_ids_2, attention_mask_2)
+        # print(output_1)
+        combined_output = torch.cat([output_1, output_2], dim=1)
+        similarity_score = self.sts_head(combined_output).squeeze(1)
+        return similarity_score
+        # ### TODO
+        # raise NotImplementedError
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -124,6 +139,13 @@ class MultitaskBERT(nn.Module):
 
 
 def save_model(model, optimizer, args, config, filepath):
+    # ---------------------------------------------------
+    # first run wherethe directory models doesn't exist
+    directory = os.path.dirname(filepath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # ---------------------------------------------------
     save_info = {
         "model": model.state_dict(),
         "optim": optimizer.state_dict(),
@@ -175,6 +197,24 @@ def train_multitask(args):
             shuffle=False,
             batch_size=args.batch_size,
             collate_fn=sst_dev_data.collate_fn,
+        )
+    
+    # STS dataset
+    if args.task == "sts" or args.task == "multitask":
+        sts_train_data = SentencePairDataset(sts_train_data, args)
+        sts_dev_data = SentencePairDataset(sts_dev_data, args)
+
+        sts_train_dataloader = DataLoader(
+            sts_train_data,
+            shuffle=True,
+            batch_size=args.batch_size,
+            collate_fn=sts_train_data.collate_fn,
+        )
+        sts_dev_dataloader = DataLoader(
+            sts_dev_data,
+            shuffle=False,
+            batch_size=args.batch_size,
+            collate_fn=sts_dev_data.collate_fn,
         )
 
     ### TODO
@@ -240,8 +280,34 @@ def train_multitask(args):
 
         if args.task == "sts" or args.task == "multitask":
             # Trains the model on the sts dataset
-            ### TODO
-            raise NotImplementedError
+            for batch in tqdm(
+                sts_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
+            ):
+                input_ids_1, attention_mask_1, input_ids_2, attention_mask_2 ,labels = (
+                    batch["token_ids_1"],
+                    batch["attention_mask_1"],
+                    batch["token_ids_2"],
+                    batch["attention_mask_2"],
+                    batch["labels"],
+                    )
+
+                input_ids_1 = input_ids_1.to(device)
+                attention_mask_1 = attention_mask_1.to(device)
+                input_ids_2 = input_ids_2.to(device)
+                attention_mask_2 = attention_mask_2.to(device)
+                labels = labels.to(device)
+
+                optimizer.zero_grad()
+                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+                loss = F.mse_loss(logits, labels.float())
+                loss.backward()
+                optimizer.step()
+
+                train_loss += loss.item()
+                num_batches += 1
+
+            # ### TODO
+            # raise NotImplementedError
 
         if args.task == "qqp" or args.task == "multitask":
             # Trains the model on the qqp dataset
