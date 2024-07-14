@@ -83,8 +83,8 @@ def train_model(model, train_data, dev_data, device, tokenizer):
     """
     ### TODO
     try:
-        optimizer = AdamW(model.parameters(), lr=5e-5)
-        num_epochs = 1 # CHANGE ME
+        optimizer = AdamW(model.parameters(), lr=1e-5)
+        num_epochs = 5 # CHANGE ME
         
         for epoch in range(num_epochs):
             model.train()
