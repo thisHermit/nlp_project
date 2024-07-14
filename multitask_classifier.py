@@ -25,6 +25,13 @@ from optimizer import AdamW
 
 TQDM_DISABLE = False
 
+# Function to select a subset
+def select_subset(dataset, percentage):
+    subset_size = int(len(dataset) * (percentage / 100))
+    subset_indices = random.sample(range(len(dataset)), subset_size)
+    subset = [dataset[i] for i in subset_indices]
+    return subset
+
 
 # fix the random seed
 def seed_everything(seed=11711):
@@ -193,6 +200,15 @@ def train_multitask(args):
     if args.task == "qqp" or args.task == "multitask":
         quora_train_data = SentencePairDataset(quora_train_data, args)
         quora_dev_data = SentencePairDataset(quora_dev_data, args)
+        
+        # subset_percentage = 5
+        # # Select subsets
+        # quora_train_data_subset = select_subset(quora_train_data, subset_percentage)
+        # quora_dev_data_subset = select_subset(quora_dev_data, subset_percentage)
+
+        # # Create new SentencePairDataset instances with the subsets
+        # quora_train_data = SentencePairDataset(quora_train_data_subset, args)
+        # quora_dev_data = SentencePairDataset(quora_dev_data_subset, args)
 
         quora_train_dataloader = DataLoader(
             quora_train_data,
