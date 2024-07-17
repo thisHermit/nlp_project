@@ -48,7 +48,8 @@ class BertSelfAttention(nn.Module):
         
         attention_scores = torch.matmul(query, key.transpose(-1, -2))
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-        attention_scores = attention_scores + attention_mask
+        if attention_mask is not None:
+            attention_scores = attention_scores + attention_mask
 
         ### TODO
         # Normalize the scores.
@@ -133,21 +134,20 @@ class BertLayer(nn.Module):
         4. a add-norm that takes the input and output of the feed forward layer
         """
         ### TODO
+        # block 1 (self attention)
         attention_output = self.self_attention(hidden_states, attention_mask)
-        attention_output = self.add_norm(hidden_states, attention_output, 
-                                        self.attention_dense,
-                                        self.attention_dropout, 
-                                        self.attention_layer_norm)
         
-        intermediate_output = self.interm_dense(attention_output)
-        intermediate_output = self.interm_af(intermediate_output)
+        # block 2 (add norm)
+        attention_output = self.add_norm(hidden_states, attention_output, self.attention_dense, self.attention_dropout, self.attention_layer_norm)
+
+        # block 3 (feedforward)
+        feedout = self.interm_dense(attention_output)
+        feedout = self.interm_af(feedout)
         
-        layer_output = self.add_norm(attention_output, intermediate_output,
-                                    self.out_dense,
-                                    self.out_dropout,
-                                    self.out_layer_norm)
-        
-        return layer_output
+        # block 4 (add norm)
+        attention_output = self.add_norm(attention_output, feedout, self.out_dense, self.out_dropout, self.out_layer_norm)
+
+        return attention_output
 
 
 class BertModel(BertPreTrainedModel):
@@ -210,6 +210,18 @@ class BertModel(BertPreTrainedModel):
         embeddings = self.embed_layer_norm(embeddings)
         embeddings = self.embed_dropout(embeddings)
         
+        return embeddings
+
+
+        # add all layers
+        embeddings = inputs_embeds + pos_embeds + tk_type_embeds
+
+        # add layer normalization
+        embeddings = self.embed_layer_norm(embeddings)
+
+        # add dropout
+        embeddings = self.embed_dropout(embeddings)
+
         return embeddings
 
 
