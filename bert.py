@@ -45,11 +45,20 @@ class BertSelfAttention(nn.Module):
 
         # Note again: in the attention_mask non-padding tokens are marked with 0 and
         # adding tokens with a large negative number.
+        
+        attention_scores = torch.matmul(query, key.transpose(-1, -2))
+        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        if attention_mask is not None:
+            attention_scores = attention_scores + attention_mask
 
         ### TODO
-        # raise NotImplementedError
+
         # Normalize the scores.
+        attention_probs = F.softmax(attention_scores, dim=-1)
+        attention_probs = self.dropout(attention_probs)
         # Multiply the attention scores to the value and get back V'.
+        context_layer = torch.matmul(attention_probs, value)
+        
         # Next, we need to concat multi-heads and recover the original shape
         # [bs, seq_len, num_attention_heads * attention_head_size = hidden_size].
         
@@ -73,6 +82,7 @@ class BertSelfAttention(nn.Module):
         context = context.transpose(1, 2).contiguous().view(scores.size(0), -1, self.all_head_size)
         
         return context
+
 
     def forward(self, hidden_states, attention_mask):
         """
@@ -199,27 +209,44 @@ class BertModel(BertPreTrainedModel):
         seq_length = input_shape[1]
 
         # Get word embedding from self.word_embedding into input_embeds.
-        inputs_embeds = None
-        ### TODO
-        # raise NotImplementedError
         inputs_embeds = self.word_embedding(input_ids)
+        ### TODO
 
         # Get position index and position embedding from self.pos_embedding into pos_embeds.
         pos_ids = self.position_ids[:, :seq_length]
 
-        pos_embeds = None
+        pos_embeds = self.pos_embedding(pos_ids)
         ### TODO
         # raise NotImplementedError
         pos_embeds = self.pos_embedding(pos_ids)
+
         # Get token type ids, since we are not considering token type,
         # this is just a placeholder.
         tk_type_ids = torch.zeros(input_shape, dtype=torch.long, device=input_ids.device)
         tk_type_embeds = self.tk_type_embedding(tk_type_ids)
 
         ### TODO
-        # raise NotImplementedError
+
         # Add three embeddings together; then apply embed_layer_norm and dropout and
         # return the hidden states.
+        embeddings = inputs_embeds + pos_embeds + tk_type_embeds
+        embeddings = self.embed_layer_norm(embeddings)
+        embeddings = self.embed_dropout(embeddings)
+        
+        return embeddings
+
+
+        # add all layers
+        embeddings = inputs_embeds + pos_embeds + tk_type_embeds
+
+        # add layer normalization
+        embeddings = self.embed_layer_norm(embeddings)
+
+        # add dropout
+        embeddings = self.embed_dropout(embeddings)
+
+        return embeddings
+
 
         # Add three embeddings together;
         embeddings = inputs_embeds + pos_embeds + tk_type_embeds

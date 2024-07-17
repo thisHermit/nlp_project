@@ -11,6 +11,20 @@ from transformers import AutoTokenizer, BartForConditionalGeneration
 
 from optimizer import AdamW
 
+import os
+import sys
+
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Change the working directory to the script's directory
+os.chdir(script_dir)
+
+# Add the script's directory to the Python path
+sys.path.insert(0, script_dir)
+
+# Print the current working directory to verify
+print("Current working directory:", os.getcwd())
 
 TQDM_DISABLE = False
 
@@ -24,7 +38,43 @@ def transform_data(dataset, max_length=256):
     Return Data Loader.
     """
     ### TODO
-    raise NotImplementedError
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
+        
+        input_ids = []
+        attention_masks = []
+        labels = []
+        
+        for _, row in dataset.iterrows():
+            try:
+                sentence1 = row['sentence1']
+                sentence1_segment = ' '.join(map(str, eval(row['sentence1_segment_location'])))
+                paraphrase_types = ' '.join(map(str, eval(row['paraphrase_types'])))
+                
+                input_text = f"{sentence1} </s> {sentence1_segment} </s> {paraphrase_types}"
+                target_text = row['sentence2'] if 'sentence2' in row else ""
+                
+                inputs = tokenizer(input_text, max_length=max_length, padding='max_length', truncation=True, return_tensors='pt')
+                targets = tokenizer(target_text, max_length=max_length, padding='max_length', truncation=True, return_tensors='pt')
+                
+                input_ids.append(inputs['input_ids'].squeeze())
+                attention_masks.append(inputs['attention_mask'].squeeze())
+                labels.append(targets['input_ids'].squeeze())
+            except Exception as e:
+                print(f"Error processing row: {e}")
+                continue
+        
+        input_ids = torch.stack(input_ids)
+        attention_masks = torch.stack(attention_masks)
+        labels = torch.stack(labels)
+        
+        dataset = TensorDataset(input_ids, attention_masks, labels)
+        dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+        
+        return dataloader
+    except Exception as e:
+        print(f"Error in transform_data: {e}")
+        raise NotImplementedError
 
 
 def train_model(model, train_data, dev_data, device, tokenizer):
@@ -32,7 +82,41 @@ def train_model(model, train_data, dev_data, device, tokenizer):
     Train the model. Return and save the model.
     """
     ### TODO
-    raise NotImplementedError
+    try:
+        optimizer = AdamW(model.parameters(), lr=5e-5)
+        num_epochs = 3
+        
+        for epoch in range(num_epochs):
+            model.train()
+            total_loss = 0
+            
+            for batch in tqdm(train_data, disable=TQDM_DISABLE):
+                try:
+                    input_ids, attention_mask, labels = [b.to(device) for b in batch]
+                    
+                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+                    loss = outputs.loss
+                    
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    
+                    total_loss += loss.item()
+                except Exception as e:
+                    print(f"Error processing batch: {e}")
+                    continue
+            
+            avg_train_loss = total_loss / len(train_data)
+            print(f"Epoch {epoch+1}/{num_epochs}, Average training loss: {avg_train_loss:.4f}")
+            
+            # Evaluate on dev set
+            dev_loss = evaluate_model(model, dev_data, device, tokenizer)
+            print(f"Epoch {epoch+1}/{num_epochs}, Dev loss: {dev_loss:.4f}")
+        
+        return model
+    except Exception as e:
+        print(f"Error in train_model: {e}")
+        raise NotImplementedError
 
 
 def test_model(test_data, test_ids, device, model, tokenizer):
@@ -43,6 +127,38 @@ def test_model(test_data, test_ids, device, model, tokenizer):
     Return this dataframe.
     """
     ### TODO
+    try:
+        model.eval()
+        generated_paraphrases = []
+        
+        with torch.no_grad():
+            for batch in tqdm(test_data, disable=TQDM_DISABLE):
+                try:
+                    input_ids, attention_mask, _ = [b.to(device) for b in batch]
+                    
+                    outputs = model.generate(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        max_length=256,
+                        num_beams=5,
+                        early_stopping=True
+                    )
+                    
+                    decoded_outputs = [tokenizer.decode(o, skip_special_tokens=True) for o in outputs]
+                    generated_paraphrases.extend(decoded_outputs)
+                except Exception as e:
+                    print(f"Error processing test batch: {e}")
+                    continue
+        
+        results_df = pd.DataFrame({
+            'id': test_ids,
+            'Generated_sentence2': generated_paraphrases
+        })
+        
+        return results_df
+    except Exception as e:
+        print(f"Error in test_model: {e}")
+        raise NotImplementedError
     raise NotImplementedError
 
 
@@ -81,12 +197,12 @@ def evaluate_model(model, test_data, device, tokenizer):
             ]
 
             predictions.extend(pred_text)
-            references.extend([[r] for r in ref_text])
+            references.extend(ref_text)
 
     model.train()
 
     # Calculate BLEU score
-    bleu_score = bleu.corpus_score(predictions, references)
+    bleu_score = bleu.corpus_score(predictions, [references])
     return bleu_score.score
 
 
@@ -110,9 +226,9 @@ def get_args():
 
 def finetune_paraphrase_generation(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
-    model = BartForConditionalGeneration.from_pretrained("facebook/bart-large")
+    model = BartForConditionalGeneration.from_pretrained("facebook/bart-large", local_files_only=True)
     model.to(device)
-    tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large")
+    tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
 
     train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
     dev_dataset = pd.read_csv("data/etpc-paraphrase-dev.csv", sep="\t")

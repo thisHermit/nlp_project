@@ -19,7 +19,7 @@ class BartWithClassifier(nn.Module):
     def __init__(self, num_labels=7):
         super(BartWithClassifier, self).__init__()
 
-        self.bart = BartModel.from_pretrained("facebook/bart-large")
+        self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True)
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
         self.sigmoid = nn.Sigmoid()
 
@@ -37,7 +37,7 @@ class BartWithClassifier(nn.Module):
         return probabilities
 
 
-def transform_data(dataset, max_length=512):
+def transform_data(dataset, args, max_length=512):
     """
     dataset: pd.DataFrame
 
@@ -55,10 +55,35 @@ def transform_data(dataset, max_length=512):
     Return a DataLoader with the TensorDataset. You can choose a batch size of your
     choice.
     """
-    raise NotImplementedError
+    tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large")
+    
+    tokenized = tokenizer(
+        text=dataset['sentence1'].tolist(), 
+        text_target=dataset['sentence2'].tolist(), 
+        padding=True, 
+        truncation=True, 
+        max_length=max_length, 
+        return_tensors="pt"
+    )
+    
+    input_ids = tokenized['input_ids']
+    attention_mask = tokenized['attention_mask']
+    
+    if 'paraphrase_types' in dataset.columns:
+        labels = dataset['paraphrase_types'].apply(eval).tolist()
+        binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
+        labels_tensor = torch.tensor(binary_labels, dtype=torch.float32)
+        
+        data = TensorDataset(input_ids, attention_mask, labels_tensor)
+    else:
+        data = TensorDataset(input_ids, attention_mask)
+    
+    dataloader = DataLoader(data, batch_size=args.batch_size, shuffle=True if 'paraphrase_types' in dataset.columns else False)
+    
+    return dataloader
 
 
-def train_model(model, train_data, dev_data, device):
+def train_model(model, train_data, dev_data, device, args):
     """
     Train the model. You can use any training loop you want. We recommend starting with
     AdamW as your optimizer. You can take a look at the SST training loop for reference.
@@ -69,9 +94,43 @@ def train_model(model, train_data, dev_data, device):
 
     Return the trained model.
     """
-    ### TODO
-    raise NotImplementedError
+    model.train()
+    optimizer = AdamW(model.parameters(), lr=2e-5)
+    criterion = nn.BCELoss() # since the target labels are binary
+    num_epochs = args.epochs
 
+    for epoch in range(num_epochs):
+        total_loss = 0
+        correct_predictions = 0
+        total_predictions = 0
+
+        for batch in tqdm(train_data, disable=TQDM_DISABLE):
+            input_ids, attention_mask, labels = [b.to(device) for b in batch]
+            
+            optimizer.zero_grad()
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            
+            total_loss += loss.item()
+            predicted_labels = (outputs > 0.5).float()
+            correct_predictions += (predicted_labels == labels).float().sum().item()
+            total_predictions += labels.numel()
+
+        avg_loss = total_loss / len(train_data)
+        train_accuracy = correct_predictions / total_predictions
+        dev_accuracy = evaluate_model(model, dev_data, device)
+        dev_accuracy = evaluate_model(model, dev_data, device)
+
+        print(f"Epoch {epoch+1}/{num_epochs}")
+        print(f"Training Loss: {avg_loss:.4f}")
+        print(f"Training Accuracy: {train_accuracy:.4f}")
+        print(f"Validation Accuracy: {train_accuracy:.4f}")
+        print(f"Validation Accuracy: {dev_accuracy:.4f}")
+        print()
+
+    return model
 
 
 def test_model(model, test_data, test_ids, device):
@@ -81,9 +140,22 @@ def test_model(model, test_data, test_ids, device):
     The 'Predicted_Paraphrase_Types' column should contain the binary array of your model predictions.
     Return this dataframe.
     """
-    ### TODO
+    model.eval()
+    all_predictions = []
 
-    raise NotImplementedError
+    with torch.no_grad():
+        for batch in tqdm(test_data, disable=TQDM_DISABLE):
+            input_ids, attention_mask = [b.to(device) for b in batch]
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            predicted_labels = (outputs > 0.5).int()
+            all_predictions.extend(predicted_labels.cpu().numpy().tolist())
+
+    results_df = pd.DataFrame({
+        'id': test_ids,
+        'Predicted_Paraphrase_Types': [str(pred) for pred in all_predictions]
+    })
+
+    return results_df
 
 
 def evaluate_model(model, test_data, device):
@@ -145,6 +217,9 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
+    parser.add_argument("--checkpoint_file", type=str, default="bart_model.ckpt")
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=64)
     args = parser.parse_args()
     return args
 
@@ -157,22 +232,27 @@ def finetune_paraphrase_detection(args):
     train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-detection-test-student.csv", sep="\t")
 
-    # TODO You might do a split of the train data into train/validation set here
-    # (or in the csv files directly)
-    train_data = transform_data(train_dataset)
-    test_data = transform_data(test_dataset)
+    # Split train data into train and validation sets
+    train_val_split = int(0.9 * len(train_dataset))
+    train_data = train_dataset.iloc[:train_val_split]
+    val_data = train_dataset.iloc[train_val_split:]
 
-    print(f"Loaded {len(train_dataset)} training samples.")
+    train_dataloader = transform_data(train_data, args)
+    val_dataloader = transform_data(val_data, args)
+    test_dataloader = transform_data(test_dataset, args)
 
-    model = train_model(model, train_data, dev_data, device)
+    print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
-    print("Training finished.")
+    model = train_model(model, train_dataloader, val_dataloader, device, args)
 
-    accuracy = evaluate_model(model, dev_data, device)
-    print(f"The accuracy of the model is: {accuracy:.3f}")
+    torch.save(model.state_dict(), args.checkpoint_file)
+    print(f"Training finished. Saved model at")
+
+    accuracy = evaluate_model(model, val_dataloader, device)
+    print(f"The accuracy of the model on the validation dataset is: {accuracy:.3f}")
 
     test_ids = test_dataset["id"]
-    test_results = test_model(model, test_data, test_ids, device)
+    test_results = test_model(model, test_dataloader, test_ids, device)
     test_results.to_csv(
         "predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False, sep="\t"
     )
