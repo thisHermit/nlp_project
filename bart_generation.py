@@ -68,8 +68,8 @@ def transform_data(dataset, max_length=256):
         attention_masks = torch.stack(attention_masks)
         labels = torch.stack(labels)
         
-        dataset = TensorDataset(input_ids, attention_masks, labels)
-        dataloader = DataLoader(dataset, batch_size=16, shuffle=True if 'sentence2' in dataset.columns else False)
+        data = TensorDataset(input_ids, attention_masks, labels)
+        dataloader = DataLoader(data, batch_size=16, shuffle=True if 'sentence2' in dataset.columns else False)
         
         return dataloader
     except Exception as e:
