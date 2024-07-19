@@ -69,12 +69,12 @@ def transform_data(dataset, max_length=256):
         labels = torch.stack(labels)
         
         dataset = TensorDataset(input_ids, attention_masks, labels)
-        dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=16, shuffle=True if 'sentence2' in dataset.columns else False)
         
         return dataloader
     except Exception as e:
         print(f"Error in transform_data: {e}")
-        raise NotImplementedError
+        raise e
 
 
 def train_model(model, train_data, dev_data, device, tokenizer):
@@ -116,7 +116,7 @@ def train_model(model, train_data, dev_data, device, tokenizer):
         return model
     except Exception as e:
         print(f"Error in train_model: {e}")
-        raise NotImplementedError
+        raise e
 
 
 def test_model(test_data, test_ids, device, model, tokenizer):
@@ -158,8 +158,7 @@ def test_model(test_data, test_ids, device, model, tokenizer):
         return results_df
     except Exception as e:
         print(f"Error in test_model: {e}")
-        raise NotImplementedError
-    raise NotImplementedError
+        raise e
 
 
 def evaluate_model(model, test_data, device, tokenizer):
