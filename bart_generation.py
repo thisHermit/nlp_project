@@ -229,8 +229,8 @@ def finetune_paraphrase_generation(args):
     model.to(device)
     tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
 
-    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
-    dev_dataset = pd.read_csv("data/etpc-paraphrase-dev.csv", sep="\t")
+    train_dataset = pd.read_csv("data/etpc-paraphrase-train-split.csv", sep="\t")
+    dev_dataset = pd.read_csv("data/etpc-paraphrase-dev-split.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-generation-test-student.csv", sep="\t")
 
     # You might do a split of the train data into train/validation set here
