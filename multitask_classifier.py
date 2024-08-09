@@ -80,6 +80,9 @@ class MultitaskBERT(nn.Module):
             nn.Linear(BERT_HIDDEN_SIZE, 1)
         )
         # raise NotImplementedError
+        # raise NotImplementedError
+        self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+
 
     def forward(self, input_ids, attention_mask):
         """Takes a batch of sentences and produces embeddings for them."""
@@ -104,7 +107,12 @@ class MultitaskBERT(nn.Module):
         Dataset: SST
         """
         ### TODO
-        raise NotImplementedError
+        # raise NotImplementedError
+        bert_output = self.forward(input_ids, attention_mask)
+        sentiment_out = self.sentiment_linear(bert_output)
+        return sentiment_out
+
+
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         """

@@ -111,13 +111,11 @@ class BertLayer(nn.Module):
         ln_layer: the layer norm to be applied
         """
         ### TODO
+        # raise NotImplementedError
         # Hint: Remember that BERT applies dropout to the output of each sub-layer,
         # before it is added to the sub-layer input and normalized.
-        transformed_output = dense_layer(output)
-        dropped_output = dropout(transformed_output)
-        added_output = input + dropped_output
-        normalized_output = ln_layer(added_output)
-        return normalized_output
+        
+        return ln_layer(input + dense_layer(dropout(output)))
 
     def forward(self, hidden_states, attention_mask):
         """
@@ -225,6 +223,18 @@ class BertModel(BertPreTrainedModel):
         return embeddings
 
 
+        # Add three embeddings together;
+        embeddings = inputs_embeds + pos_embeds + tk_type_embeds
+
+        # apply embed_layer_norm 
+        hidden_states = self.embed_layer_norm(embeddings)
+
+        # dropout
+        hidden_states = self.embed_dropout(hidden_states)
+
+        # return the hidden states.
+        return hidden_states
+
     def encode(self, hidden_states, attention_mask):
         """
         hidden_states: the output from the embedding layer [batch_size, seq_len, hidden_size]
@@ -261,3 +271,18 @@ class BertModel(BertPreTrainedModel):
         first_tk = self.pooler_af(first_tk)
 
         return {"last_hidden_state": sequence_output, "pooler_output": first_tk}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

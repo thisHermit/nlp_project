@@ -68,36 +68,47 @@ class AdamW(Optimizer):
                 #    (incorporating the learning rate again).
 
                 ### TODO
-                
-                # initilizations
-
-                if len(state) ==0:
-                    state["moment_m"] = torch.zeros_like(p.data)
-                    state["moment_v"] = torch.zeros_like(p.data)
-                    state["step_t"] = 0
-                    
-                state["step_t"] += 1
-                mt, vt =  state["moment_m"], state["moment_v"]
-                beta1, beta2 = group['betas']
-
-                # update first and second moments
-                mt.mul_(beta1).add_(grad, alpha=1 - beta1)
-                vt.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
-
-                # corr_mt = mt / (beta1 ** state["step_t"])
-                # corr_vt = vt / (beta2 ** state["step_t"])
-
-                # efficient method update parameters
-                step_size = group["lr"] * math.sqrt(1 - beta2 ** state["step_t"]) / (1 - beta1 ** state["step_t"])
-                p.data.addcdiv_(mt , vt.sqrt().add_(group["eps"]) , value = - step_size )
-
-                # Apply weight decay
-                if group["weight_decay"] != 0:
-                    p.data.add_(p.data, alpha=-group["lr"] * group["weight_decay"])
-
-
-
-                
                 # raise NotImplementedError
+
+                # Initialize state
+                if len(state) == 0:
+                    state["step"] = 0
+                    state["m"] = torch.zeros_like(p.data)
+                    state["v"] = torch.zeros_like(p.data)
+
+                # Hyperparameters fetching
+                alpha = group["lr"]
+                beta1, beta2 = group["betas"]
+                eps = group["eps"]
+                weight_decay = group["weight_decay"]
+                correct_bias = group["correct_bias"]
+
+                # Update the step count
+                state["step"] += 1
+                t = state["step"]
+
+                # 1- Update first and second moments of the gradients.
+                state["m"] = beta1 * state["m"] + (1 - beta1) * grad
+                state["v"] = beta2 * state["v"] + (1 - beta2) * (grad ** 2)
+
+                # 2- Apply bias correction. 
+                if correct_bias:
+                    bias_correction1 = 1 - beta1 ** t
+                    bias_correction2 = 1 - beta2 ** t
+                    alpha *= math.sqrt(bias_correction2) / bias_correction1
+                
+                # m_hat = state["m"] / bias_correction1
+                # v_hat = state["v"] / bias_correction2
+                # p.data = p.data - alpha * (m_hat / (torch.sqrt(v_hat) + eps))
+
+
+                # 3- Update parameters (p.data).
+                p.data -= alpha * state["m"] / (torch.sqrt(state["v"]) + eps)
+
+                # 4- After that main gradient-based update, update again using weight decay
+                if weight_decay > 0.0:
+                    p.data.add_(-group["lr"] * weight_decay, p.data)
+                    # p.data -= alpha * weight_decay * p.data
+
 
         return loss
