@@ -107,7 +107,7 @@ class AdamW(Optimizer):
 
                 # 4- After that main gradient-based update, update again using weight decay
                 if weight_decay > 0.0:
-                    p.data.add_(-group["lr"] * weight_decay, p.data)
+                    p.data.add_(p.data, alpha=-group["lr"] * weight_decay)
                     # p.data -= alpha * weight_decay * p.data
 
 
