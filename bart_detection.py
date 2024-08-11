@@ -22,12 +22,7 @@ class BartWithClassifier(nn.Module):
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
         # update bert 
-        new_config = {
-            'activation_function': 'silu',
-        }
-        self.bart.config.update(new_config)
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, input_ids, attention_mask=None):
         # Use the BartModel to obtain the last hidden state
@@ -36,11 +31,10 @@ class BartWithClassifier(nn.Module):
         cls_output = last_hidden_state[:, 0, :]
 
         # Add an additional fully connected layer to obtain the logits
-        logits = self.classifier(cls_output)
+        out = self.classifier(cls_output)
 
         # Return the probabilities
-        probabilities = self.sigmoid(logits)
-        return probabilities
+        return out
 
 
 def transform_data(dataset, args, max_length=512):
@@ -111,7 +105,7 @@ def train_model(model, train_data, dev_data, device, args):
     """
     model.train()
     optimizer = AdamW(model.parameters(), lr=2e-5)
-    criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCELoss() # since the target labels are binary
+    criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
     
     num_epochs = args.epochs
 
