@@ -21,7 +21,7 @@ class BartWithClassifier(nn.Module):
         super(BartWithClassifier, self).__init__()
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
-        # update bert 
+        self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
 
     def forward(self, input_ids, attention_mask=None):
@@ -31,7 +31,8 @@ class BartWithClassifier(nn.Module):
         cls_output = last_hidden_state[:, 0, :]
 
         # Add an additional fully connected layer to obtain the logits
-        out = self.classifier(cls_output)
+        out = self.pre_final(cls_output)
+        out = self.classifier(out)
 
         # Return the probabilities
         return out
@@ -105,6 +106,7 @@ def train_model(model, train_data, dev_data, device, args):
     """
     model.train()
     optimizer = AdamW(model.parameters(), lr=2e-5)
+    scheduler = ExponentialLR(optimizer, gamma=0.9)
     criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
     
     num_epochs = args.epochs
@@ -127,6 +129,8 @@ def train_model(model, train_data, dev_data, device, args):
             predicted_labels = (outputs > 0.5).float()
             correct_predictions += (predicted_labels == labels).float().sum().item()
             total_predictions += labels.numel()
+        
+        scheduler.step()
 
         avg_loss = total_loss / len(train_data)
         train_accuracy = correct_predictions / total_predictions
