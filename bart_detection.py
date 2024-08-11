@@ -4,6 +4,7 @@ import random
 import numpy as np
 import pandas as pd
 import torch
+from collections import Counter
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
@@ -71,7 +72,16 @@ def transform_data(dataset, args, max_length=512):
     
     if 'paraphrase_types' in dataset.columns:
         labels = dataset['paraphrase_types'].apply(eval).tolist()
-        binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
+        if args.multi_label:
+            lbc1 = dataset['sentence1_segment_location'].apply(eval).tolist()
+            lbc2 = dataset['sentence2_segment_location'].apply(eval).tolist()
+            joined_lbcs = [l1 + l2 for l1, l2 in zip(lbc1, lbc2)]
+            binary_labels = []
+            for label in joined_lbcs:
+                counter = Counter(label)
+                binary_labels.append([counter[i + 1] // min(counter.values()) for i in range(7)])
+        else:
+            binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
         labels_tensor = torch.tensor(binary_labels, dtype=torch.float32)
         
         data = TensorDataset(input_ids, attention_mask, labels_tensor)
@@ -96,7 +106,8 @@ def train_model(model, train_data, dev_data, device, args):
     """
     model.train()
     optimizer = AdamW(model.parameters(), lr=2e-5)
-    criterion = nn.BCELoss() # since the target labels are binary
+    criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCELoss() # since the target labels are binary
+    
     num_epochs = args.epochs
 
     for epoch in range(num_epochs):
@@ -224,8 +235,9 @@ def get_args():
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
     parser.add_argument("--checkpoint_file", type=str, default="bart_model.ckpt")
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=4)
     parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--multi_label", action="store_true")
     args = parser.parse_args()
     return args
 
