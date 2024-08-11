@@ -1,19 +1,56 @@
 import argparse
 import random
+from collections import Counter
 
 import numpy as np
 import pandas as pd
 import torch
-from collections import Counter
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 TQDM_DISABLE = False
+
+class EarlyStopping:
+    "Function to stop the training early, if the validation loss doesn't improve after a predefined patience."
+    def __init__(self, checkpoint_path, patience=5, verbose=False, delta=0):
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+        self.model_checkpoint_path = checkpoint_path
+
+    def __call__(self, val_loss, model):
+
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping Counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model):
+        '''Saves model when validation loss decrease.'''
+        if self.verbose:
+            print(f'Validation Loss Decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), self.model_checkpoint_path)
+        self.val_loss_min = val_loss
 
 
 class BartWithClassifier(nn.Module):
@@ -25,16 +62,15 @@ class BartWithClassifier(nn.Module):
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
 
     def forward(self, input_ids, attention_mask=None):
-        # Use the BartModel to obtain the last hidden state
+        # use the BartModel to obtain the last hidden state
         outputs = self.bart(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = outputs.last_hidden_state
         cls_output = last_hidden_state[:, 0, :]
 
-        # Add an additional fully connected layer to obtain the logits
+        # add two fully connected layers to obtain the logits
         out = self.pre_final(cls_output)
         out = self.classifier(out)
 
-        # Return the probabilities
         return out
 
 
@@ -93,7 +129,7 @@ def transform_data(dataset, args, max_length=512):
     return dataloader
 
 
-def train_model(model, train_data, dev_data, device, args):
+def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     """
     Train the model. You can use any training loop you want. We recommend starting with
     AdamW as your optimizer. You can take a look at the SST training loop for reference.
@@ -142,6 +178,13 @@ def train_model(model, train_data, dev_data, device, args):
         print(f"Validation Accuracy: {dev_accuracy:.4f}")
         print(f"Validation Matthews Coefficient: {matthews_coefficient:.4f}")
         print()
+        if early_stopping is not None:
+            # early stopping needs to check the validation loss if it decreases, and saves checkpoint of current best model
+            early_stopping(-matthews_coefficient, model)
+
+            if early_stopping.early_stop:
+                print("Early Stopping...")
+                break
 
     return model
 
@@ -237,7 +280,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
     parser.add_argument("--checkpoint_file", type=str, default="bart_model.ckpt")
-    parser.add_argument("--epochs", type=int, default=4)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--multi_label", action="store_true")
     args = parser.parse_args()
@@ -263,7 +306,8 @@ def finetune_paraphrase_detection(args):
 
     print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
-    model = train_model(model, train_dataloader, val_dataloader, device, args)
+    early_stopping = EarlyStopping('.', patience=3)
+    model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
 
     torch.save(model.state_dict(), args.checkpoint_file)
     print(f"Training finished. Saved model at {args.checkpoint_file}")
