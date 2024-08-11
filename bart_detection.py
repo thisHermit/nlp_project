@@ -131,14 +131,13 @@ def train_model(model, train_data, dev_data, device, args):
 
         avg_loss = total_loss / len(train_data)
         train_accuracy = correct_predictions / total_predictions
-        dev_accuracy = evaluate_model(model, dev_data, device)
-        dev_accuracy = evaluate_model(model, dev_data, device)
+        dev_accuracy, matthews_coefficient = evaluate_model(model, dev_data, device)
 
         print(f"Epoch {epoch+1}/{num_epochs}")
         print(f"Training Loss: {avg_loss:.4f}")
         print(f"Training Accuracy: {train_accuracy:.4f}")
-        print(f"Validation Accuracy: {train_accuracy:.4f}")
         print(f"Validation Accuracy: {dev_accuracy:.4f}")
+        print(f"Validation Matthews Coefficient: {matthews_coefficient:.4f}")
         print()
 
     return model
