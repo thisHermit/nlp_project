@@ -18,7 +18,7 @@ TQDM_DISABLE = False
 
 class EarlyStopping:
     "Function to stop the training early, if the validation loss doesn't improve after a predefined patience."
-    def __init__(self, checkpoint_path, patience=5, verbose=False, delta=0):
+    def __init__(self, checkpoint_path, patience=5, verbose=True, delta=0):
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
@@ -48,7 +48,7 @@ class EarlyStopping:
     def save_checkpoint(self, val_loss, model):
         '''Saves model when validation loss decrease.'''
         if self.verbose:
-            print(f'Validation Loss Decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+            print(f'Validation Loss/Score Decreased/Increased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), self.model_checkpoint_path)
         self.val_loss_min = val_loss
 
@@ -173,15 +173,11 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
         dev_accuracy, matthews_coefficient = evaluate_model(model, dev_data, device)
 
         print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"Training Loss: {avg_loss:.4f}")
-        print(f"Training Accuracy: {train_accuracy:.4f}")
-        print(f"Validation Accuracy: {dev_accuracy:.4f}")
+        print(f"Training Loss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
         print(f"Validation Matthews Coefficient: {matthews_coefficient:.4f}")
         print()
         if early_stopping is not None:
-            # early stopping needs to check the validation loss if it decreases, and saves checkpoint of current best model
             early_stopping(-matthews_coefficient, model)
-
             if early_stopping.early_stop:
                 print("Early Stopping...")
                 break
@@ -306,7 +302,7 @@ def finetune_paraphrase_detection(args):
 
     print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
-    early_stopping = EarlyStopping('.', patience=3)
+    early_stopping = EarlyStopping('ptd_early_stop.ckpt', patience=3)
     model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
 
     torch.save(model.state_dict(), args.checkpoint_file)
