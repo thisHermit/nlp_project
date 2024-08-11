@@ -20,7 +20,12 @@ class BartWithClassifier(nn.Module):
     def __init__(self, num_labels=7):
         super(BartWithClassifier, self).__init__()
 
-        self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True)
+        self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
+        # update bert 
+        new_config = {
+            'activation_function': 'silu',
+        }
+        self.bart.config.update(new_config)
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
         self.sigmoid = nn.Sigmoid()
 
