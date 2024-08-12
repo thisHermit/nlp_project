@@ -54,12 +54,21 @@ class EarlyStopping:
 
 
 class BartWithClassifier(nn.Module):
-    def __init__(self, num_labels=7):
+    def __init__(self, latent_dims=7, num_labels=7):
         super(BartWithClassifier, self).__init__()
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
-        self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
+        # self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
+        self.fc_mu = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for mu
+        self.fc_logvar = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for log variance
+        self.fc_z = nn.Linear(latent_dims, self.bart.config.hidden_size)
+
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
 
     def forward(self, input_ids, attention_mask=None):
         # use the BartModel to obtain the last hidden state
@@ -68,8 +77,14 @@ class BartWithClassifier(nn.Module):
         cls_output = last_hidden_state[:, 0, :]
 
         # add two fully connected layers to obtain the logits
-        out = self.pre_final(cls_output)
-        out = self.classifier(out)
+        mu = self.fc_mu(cls_output)
+        logvar = self.fc_logvar(cls_output)
+
+        z = self.reparameterize(mu, logvar) if self.training else mu
+
+        z_out = self.fc_z(z)
+        
+        out = self.classifier(z_out + cls_output) # add residual
 
         return out
 
@@ -302,10 +317,10 @@ def finetune_paraphrase_detection(args):
 
     print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
-    early_stopping = EarlyStopping('ptd_early_stop.ckpt', patience=3)
+    early_stopping = EarlyStopping(args.checkpoint_file, patience=4)
     model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
 
-    torch.save(model.state_dict(), args.checkpoint_file)
+    # torch.save(model.state_dict(), args.checkpoint_file)
     print(f"Training finished. Saved model at {args.checkpoint_file}")
 
     accuracy, matthews_corr = evaluate_model(model, val_dataloader, device)
