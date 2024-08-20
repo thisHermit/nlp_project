@@ -32,3 +32,19 @@ Parts of the code are from the [`transformers`](https://github.com/huggingface/t
 Parts of the scripts and code were altered by [Jan Philip Wahle](https://jpwahle.com/) and [Terry Ruas](https://terryruas.com/).
 
 For the 2024 edition of the DNLP course at the University of Göttingen, the project was modified by [Niklas Bauer](https://github.com/ItsNiklas/), [Jonas Lührs](https://github.com/JonasLuehrs), ...
+
+
+
+
+# Madkour STS Experiments:
+## base:
+lOSS:   
+Train:  0.905
+Dev:    0.319
+test    0.376
+
+## exp1 SMART:
+loss:   0.753
+Train:  0.892
+Dev:    0.354
+test:   0.381

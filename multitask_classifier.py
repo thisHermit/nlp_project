@@ -23,6 +23,10 @@ from datasets import (
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
 
+from smart_regulization import smart_loss
+
+
+
 TQDM_DISABLE = False
 
 # Function to select a subset
@@ -150,6 +154,21 @@ class MultitaskBERT(nn.Module):
         return similarity_score
         # ### TODO
         # raise NotImplementedError
+
+
+
+############# TESTING SMARTTTTTT
+
+    def predict_similarity_SMART(self, output_1, output_2):
+
+        combined_output = torch.cat([output_1, output_2], dim=1)
+        similarity_score = self.sts_head(combined_output).squeeze(1)
+        return similarity_score
+    
+    def get_embeddings(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        output_1 = self.forward(input_ids_1, attention_mask_1)
+        output_2 = self.forward(input_ids_2, attention_mask_2)
+        return output_1,output_2
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -352,8 +371,16 @@ def train_multitask(args):
                 labels = labels.to(device)
 
                 optimizer.zero_grad()
-                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-                loss = F.mse_loss(logits, labels.float())
+                # logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
+
+
+                # Get embeddings from the model for SMART loss computation
+                embeddings_1,embeddings_2 = model.get_embeddings(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+
+
+                loss = smart_loss(model , embeddings_1, embeddings_2, labels)
+
+                # Backpropagation and optimization step
                 loss.backward()
                 optimizer.step()
 
