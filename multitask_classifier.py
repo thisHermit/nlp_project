@@ -59,7 +59,7 @@ class MultitaskBERT(nn.Module):
     """
 
     def __init__(self, config):
-        super(MultitaskBERT, self).__init__()
+        super(MultitaskBERT, self,).__init__()
 
         # You will want to add layers here to perform the downstream tasks.
         # Pretrain mode does not require updating bert parameters.
@@ -74,29 +74,65 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Sequential(
-            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
-            nn.ReLU(),
-            nn.Linear(BERT_HIDDEN_SIZE, 1)
-        )
-        # raise NotImplementedError
-        # raise NotImplementedError
+
+        # VAE STS
+        self.latent_dim = 5
+        self.encoder = nn.Linear(BERT_HIDDEN_SIZE, self.latent_dim)
+        self.mu_layer = nn.Linear(self.latent_dim, self.latent_dim)
+        self.logvar_layer = nn.Linear(self.latent_dim, self.latent_dim)
+        self.decoder = nn.Linear(self.latent_dim, BERT_HIDDEN_SIZE)
+        self.sts_head = nn.Linear(BERT_HIDDEN_SIZE*2, 5)
+
+        # self.sts_head = nn.Sequential(
+        #     nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
+        #     nn.ReLU(),
+        #     nn.Linear(BERT_HIDDEN_SIZE, 1)
+        # )
+
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
 
-
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
+    
     def forward(self, input_ids, attention_mask):
-        """Takes a batch of sentences and produces embeddings for them."""
+        """Forward pass: Get embeddings from BERT and VAE latent space."""
+        # BERT output
+        bert_output = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        output_layer = bert_output['last_hidden_state'][:, 0, :]  # CLS token embedding
 
-        # The final BERT embedding is the hidden state of [CLS] token (the first token).
-        # See BertModel.forward() for more details.
-        # Here, you can start by just returning the embeddings straight from BERT.
-        # When thinking of improvements, you can later try modifying this
-        # (e.g., by adding other layers).
-        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        output_layer = bert_model['last_hidden_state'][:, 0, :]
-        return output_layer
-        # ### TODO
-        # raise NotImplementedError
+        # VAE encoding
+        latent_encoding = self.encoder(output_layer)
+        mu = self.mu_layer(latent_encoding)
+        logvar = self.logvar_layer(latent_encoding)
+        z = self.reparameterize(mu, logvar)
+
+        # VAE decoding
+        decoded_output = self.decoder(z)
+
+        return output_layer, decoded_output, mu, logvar
+
+    def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        """Predict similarity score between two sentences."""
+        output_1, decoded_1, mu_1, logvar_1 = self.forward(input_ids_1, attention_mask_1)
+        output_2, decoded_2, mu_2, logvar_2 = self.forward(input_ids_2, attention_mask_2)
+
+        # Combine BERT embeddings for similarity prediction
+        combined_output = torch.cat([output_1, output_2], dim=1)
+        similarity_score = self.sts_head(combined_output).squeeze(1)
+        return similarity_score, decoded_1, decoded_2, mu_1, logvar_1, mu_2, logvar_2
+    
+    def vae_loss(self, decoded, original, mu, logvar):
+        """VAE loss: reconstruction loss + KL divergence."""
+        reconstruction_loss = F.mse_loss(decoded, original, reduction='mean')
+        kl_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        return reconstruction_loss + kl_divergence
+
+
+
+
+
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -134,22 +170,24 @@ class MultitaskBERT(nn.Module):
 
         return logit.squeeze(-1)
 
-    def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        """
-        Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
-        Since the similarity label is a number in the interval [0,5], your output should be normalized to the interval [0,5];
-        it will be handled as a logit by the appropriate loss function.
-        Dataset: STS
-        """
-        # print(input_ids_1)
-        output_1 = self.forward(input_ids_1, attention_mask_1)
-        output_2 = self.forward(input_ids_2, attention_mask_2)
-        # print(output_1)
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
-        # ### TODO
-        # raise NotImplementedError
+    # def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+    #     """
+    #     Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
+    #     Since the similarity label is a number in the interval [0,5], your output should be normalized to the interval [0,5];
+    #     it will be handled as a logit by the appropriate loss function.
+    #     Dataset: STS
+    #     """
+    #     # print(input_ids_1)
+    #     output_1 = self.forward(input_ids_1, attention_mask_1)
+    #     output_2 = self.forward(input_ids_2, attention_mask_2)
+    #     # print(output_1)
+    #     combined_output = torch.cat([output_1, output_2], dim=1)
+    #     similarity_score = self.sts_head(combined_output).squeeze(1)
+    #     return similarity_score
+    #     # ### TODO
+    #     # raise NotImplementedError
+
+
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -352,8 +390,24 @@ def train_multitask(args):
                 labels = labels.to(device)
 
                 optimizer.zero_grad()
-                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-                loss = F.mse_loss(logits, labels.float())
+                
+                # Get predictions and VAE outputs
+                logits, decoded_1, decoded_2, mu_1, logvar_1, mu_2, logvar_2 = model.predict_similarity(
+                    input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
+                )
+                 # Similarity loss (MSE)
+                similarity_loss = F.mse_loss(logits, labels.float())
+
+                original_embedding_1 = model.bert(input_ids=input_ids_1, attention_mask=attention_mask_1)['last_hidden_state'][:, 0, :]
+                original_embedding_2 = model.bert(input_ids=input_ids_2, attention_mask=attention_mask_2)['last_hidden_state'][:, 0, :]
+
+                # VAE loss for both sentences
+                vae_loss_1 = model.vae_loss(decoded_1, original_embedding_1.float(), mu_1, logvar_1)
+                vae_loss_2 = model.vae_loss(decoded_2, original_embedding_2.float(), mu_2, logvar_2)
+
+                # Total loss = similarity loss + VAE loss
+                loss = similarity_loss + vae_loss_1 + vae_loss_2
+
                 loss.backward()
                 optimizer.step()
 
