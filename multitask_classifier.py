@@ -74,11 +74,11 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        
-        # raise NotImplementedError
-        # raise NotImplementedError
+        # self.sts_head = nn.Linear(BERT_HIDDEN_SIZE , 1)
+        # Define the ranking loss
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        
+        
 
 
     def forward(self, input_ids, attention_mask):
@@ -138,15 +138,92 @@ class MultitaskBERT(nn.Module):
         it will be handled as a logit by the appropriate loss function.
         Dataset: STS
         """
-        # print(input_ids_1)
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        # print(output_1)
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
-        # ### TODO
-        # raise NotImplementedError
+        
+        # Compute cosine similarity
+        cos_sim = F.cosine_similarity(output_1, output_2)
+        scaled_sim = (cos_sim + 1) * 2.5
+        return scaled_sim
+
+    def compute_multiple_negatives_ranking_loss(self, embeddings_1, embeddings_2):
+        """
+        Computes the MultipleNegativesRankingLoss.
+        
+        embeddings_1: Tensor of shape (batch_size, embedding_dim) - First set of embeddings
+        embeddings_2: Tensor of shape (batch_size, embedding_dim) - Second set of embeddings
+        
+        Returns:
+        loss: Computed loss value
+        """
+        # Normalize the embeddings to unit vectors
+        embeddings_1 = F.normalize(embeddings_1, p=2, dim=1)
+        embeddings_2 = F.normalize(embeddings_2, p=2, dim=1)
+
+        # Compute cosine similarity matrix between the two sets of embeddings
+        similarity_matrix = torch.matmul(embeddings_1, embeddings_2.T)
+
+        # Apply softmax to similarity matrix (to ensure it's positive)
+        similarity_matrix = similarity_matrix * 20.0  # Optional scaling factor (as in the original repo)
+        labels = torch.arange(similarity_matrix.size(0)).to(embeddings_1.device)
+
+        # Compute the cross-entropy loss
+        loss = F.cross_entropy(similarity_matrix, labels)
+
+        return loss
+
+
+
+    # def compute_multiple_negatives_ranking_loss(self, embeddings):
+    #     # Compute cosine similarity matrix
+    #     cos_sim = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=2)
+        
+    #     # Create labels: each embedding is its own positive
+    #     labels = torch.arange(cos_sim.size(0)).to(embeddings.device)
+
+    #     # Compute Cross-Entropy loss
+    #     loss = F.cross_entropy(cos_sim, labels)
+
+    #     return loss
+
+    # def compute_loss(self, anchor_embeds, positive_embeds, negative_embeds, temperature=0.07):
+    #     """Compute the Multiple Negative Ranking Loss."""
+    #     # Compute cosine similarities
+    #     anchor_positive_sim = F.cosine_similarity(anchor_embeds.unsqueeze(1), positive_embeds.unsqueeze(0), dim=2)
+    #     anchor_negative_sim = F.cosine_similarity(anchor_embeds.unsqueeze(1), negative_embeds.unsqueeze(0), dim=2)
+
+    #     # Scale similarities
+    #     positive_scores = anchor_positive_sim / temperature
+    #     negative_scores = anchor_negative_sim / temperature
+
+    #     # Create labels for cross-entropy loss
+    #     labels = torch.zeros(anchor_embeds.size(0), dtype=torch.long, device=anchor_embeds.device)
+        
+    #     # Concatenate positive and negative scores for loss calculation
+    #     combined_scores = torch.cat([positive_scores, negative_scores], dim=1)
+        
+    #     # Compute loss
+    #     loss = F.cross_entropy(combined_scores, labels)
+    #     return loss
+
+    # def get_negative_samples(self, positive_embeddings, all_embeddings):
+    #     """Sample negative embeddings from all embeddings excluding the positive ones."""
+    #     positive_indices = torch.arange(positive_embeddings.size(0))
+    #     all_embeddings = all_embeddings.clone()
+
+    #     # To avoid self-pairing, mask out positive embeddings
+    #     mask = torch.ones(all_embeddings.size(0), dtype=torch.bool)
+    #     mask[positive_indices] = False
+
+    #     all_embeddings = all_embeddings[mask]
+
+    #     negative_samples = []
+    #     for pos_embed in positive_embeddings:
+    #         # Randomly sample from remaining negative samples
+    #         neg_embed = all_embeddings[torch.randint(0, all_embeddings.size(0), (1,))]
+    #         negative_samples.append(neg_embed)
+
+    #     return torch.cat(negative_samples)
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -298,6 +375,7 @@ def train_multitask(args):
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = float("-inf")
 
+
     # Run for the specified number of epochs
     for epoch in range(args.epochs):
         model.train()
@@ -348,17 +426,26 @@ def train_multitask(args):
                 attention_mask_2 = attention_mask_2.to(device)
                 labels = labels.to(device)
 
+
                 optimizer.zero_grad()
+                output_1 = model.forward(input_ids_1, attention_mask_1)
+                output_2 = model.forward(input_ids_2, attention_mask_2)
+
+                # Compute loss using MultipleNegativesRankingLoss
+                # embeddings = torch.cat((output_1, output_2), 0)
+
                 logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-                loss = F.mse_loss(logits, labels.float())
+                mse_loss = F.mse_loss(logits, labels.float())
+                ranking_loss = model.compute_multiple_negatives_ranking_loss(output_1,output_2)
+                loss = ranking_loss + 1 * mse_loss
+                
+                
                 loss.backward()
                 optimizer.step()
 
                 train_loss += loss.item()
                 num_batches += 1
 
-            # ### TODO
-            # raise NotImplementedError
 
         if args.task == "qqp" or args.task == "multitask":
             # Trains the model on the qqp dataset

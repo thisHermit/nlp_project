@@ -97,6 +97,7 @@ def model_eval_multitask(
                 y_hat = logits.flatten().cpu().numpy()
                 b_labels = b_labels.flatten().cpu().numpy()
 
+
                 sts_y_pred.extend(y_hat)
                 sts_y_true.extend(b_labels)
                 sts_sent_ids.extend(b_sent_ids)
