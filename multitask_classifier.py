@@ -74,11 +74,8 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Sequential(
-            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
-            nn.ReLU(),
-            nn.Linear(BERT_HIDDEN_SIZE, 1)
-        )
+        self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
+        
         # raise NotImplementedError
         # raise NotImplementedError
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
