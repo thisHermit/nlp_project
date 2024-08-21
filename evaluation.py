@@ -93,6 +93,10 @@ def model_eval_multitask(
                 b_ids2 = b_ids2.to(device)
                 b_mask2 = b_mask2.to(device)
 
+                # embed_1,embed_2 = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
+                # out = model.compute_loss(embed_1, embed_2, b_labels,device)
+                # y_hat = out.flatten().cpu().numpy()
+
                 logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
                 y_hat = logits.flatten().cpu().numpy()
                 b_labels = b_labels.flatten().cpu().numpy()
@@ -254,6 +258,10 @@ def model_eval_test_multitask(
 
                 logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
                 y_hat = logits.flatten().cpu().numpy()
+
+                # embed_1,embed_2 = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
+                # out = model.compute_loss(embed_1, embed_2, b_labels)
+                # y_hat = out.flatten().cpu().numpy()
 
                 sts_y_pred.extend(y_hat)
                 sts_sent_ids.extend(b_sent_ids)
