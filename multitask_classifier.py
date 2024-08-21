@@ -46,7 +46,7 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-
+LATENT_DIMS = 6
 
 class MultitaskBERT(nn.Module):
     """
@@ -74,14 +74,21 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Sequential(
-            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
-            nn.ReLU(),
-            nn.Linear(BERT_HIDDEN_SIZE, 1)
-        )
+        # self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
+        self.fc_mu = nn.Linear(BERT_HIDDEN_SIZE, LATENT_DIMS) # Linear layer for mu
+        self.fc_logvar = nn.Linear(BERT_HIDDEN_SIZE, LATENT_DIMS) # Linear layer for log variance
+        self.fc_z = nn.Linear(LATENT_DIMS, BERT_HIDDEN_SIZE)
+        self.sts_head = nn.Linear(BERT_HIDDEN_SIZE*2, 1)
+
+
         # raise NotImplementedError
         # raise NotImplementedError
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
 
 
     def forward(self, input_ids, attention_mask):
@@ -94,9 +101,19 @@ class MultitaskBERT(nn.Module):
         # (e.g., by adding other layers).
         bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         output_layer = bert_model['last_hidden_state'][:, 0, :]
-        return output_layer
-        # ### TODO
-        # raise NotImplementedError
+
+        # add two fully connected layers to obtain the logits
+        mu = self.fc_mu(output_layer)
+        logvar = self.fc_logvar(output_layer)
+
+        z = self.reparameterize(mu, logvar) if self.training else mu
+
+        z_out = self.fc_z(z)
+        
+        out = z_out + output_layer # add residual
+        
+        return out
+
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
