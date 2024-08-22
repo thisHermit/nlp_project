@@ -145,34 +145,61 @@ class MultitaskBERT(nn.Module):
         it will be handled as a logit by the appropriate loss function.
         Dataset: STS
         """
-        # print(input_ids_1)
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        # print(output_1)
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
-        # ### TODO
-        # raise NotImplementedError
+
+        # Compute cosine similarity
+        cos_sim = F.cosine_similarity(output_1, output_2)
+        scaled_sim = (cos_sim + 1) * 2.5
+        return scaled_sim
 
 
 
 ############# TESTING SMARTTTTTT
 
     def predict_similarity_SMART(self, output_1, output_2):
-
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
+        cos_sim = F.cosine_similarity(output_1, output_2)
+        scaled_sim = (cos_sim + 1) * 2.5
+        # combined_output = torch.cat([output_1, output_2], dim=1)
+        # similarity_score = self.sts_head(combined_output).squeeze(1)
+        return scaled_sim
     
     def get_embeddings(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
         return output_1,output_2
 
+    def compute_multiple_negatives_ranking_loss(self, embeddings_1, embeddings_2):
+        """
+        Computes the MultipleNegativesRankingLoss.
+        
+        embeddings_1: Tensor of shape (batch_size, embedding_dim) - First set of embeddings
+        embeddings_2: Tensor of shape (batch_size, embedding_dim) - Second set of embeddings
+        
+        Returns:
+        loss: Computed loss value
+        """
+        # Normalize the embeddings to unit vectors
+        embeddings_1 = F.normalize(embeddings_1, p=2, dim=1)
+        embeddings_2 = F.normalize(embeddings_2, p=2, dim=1)
+
+        # Compute cosine similarity matrix between the two sets of embeddings
+        similarity_matrix = torch.matmul(embeddings_1, embeddings_2.T)
+
+        # Apply softmax to similarity matrix (to ensure it's positive)
+        similarity_matrix = similarity_matrix * 20.0  # Optional scaling factor (as in the original repo)
+        labels = torch.arange(similarity_matrix.size(0)).to(embeddings_1.device)
+
+        # Compute the cross-entropy loss
+        loss = F.cross_entropy(similarity_matrix, labels)
+
+        return loss
+
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
     ):
+        
+    
         """
         Given a batch of pairs of sentences, outputs logits for detecting the paraphrase types.
         There are 7 different types of paraphrases.
@@ -371,14 +398,17 @@ def train_multitask(args):
                 labels = labels.to(device)
 
                 optimizer.zero_grad()
-                # logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
 
+                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
+                mse_loss = F.mse_loss(logits, labels.float())
 
                 # Get embeddings from the model for SMART loss computation
                 embeddings_1,embeddings_2 = model.get_embeddings(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+                s_loss = smart_loss(model , embeddings_1, embeddings_2, labels)
 
-
-                loss = smart_loss(model , embeddings_1, embeddings_2, labels)
+                # mnrl loss
+                ranking_loss = model.compute_multiple_negatives_ranking_loss(embeddings_1,embeddings_2)
+                loss = ranking_loss + s_loss + mse_loss
 
                 # Backpropagation and optimization step
                 loss.backward()
