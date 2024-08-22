@@ -78,7 +78,7 @@ class MultitaskBERT(nn.Module):
         self.fc_mu = nn.Linear(BERT_HIDDEN_SIZE, LATENT_DIMS) # Linear layer for mu
         self.fc_logvar = nn.Linear(BERT_HIDDEN_SIZE, LATENT_DIMS) # Linear layer for log variance
         self.fc_z = nn.Linear(LATENT_DIMS, BERT_HIDDEN_SIZE)
-        self.sts_head = nn.Linear(BERT_HIDDEN_SIZE*2, 1)
+        # self.sts_head = nn.Linear(BERT_HIDDEN_SIZE*2, 1)
 
 
         # raise NotImplementedError
@@ -161,10 +161,11 @@ class MultitaskBERT(nn.Module):
         # print(input_ids_1)
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        # print(output_1)
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
+
+        # Compute cosine similarity
+        cos_sim = F.cosine_similarity(output_1, output_2)
+        scaled_sim = (cos_sim + 1) * 2.5
+        return scaled_sim
         # ### TODO
         # raise NotImplementedError
 
