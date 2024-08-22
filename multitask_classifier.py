@@ -21,7 +21,7 @@ from datasets import (
     load_multitask_data,
 )
 from evaluation import model_eval_multitask, test_model_multitask
-from optimizer import AdamW
+from optimizer import get_optimizer
 
 TQDM_DISABLE = False
 
@@ -74,8 +74,11 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        
+        self.sts_head = nn.Sequential(
+            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
+            nn.ReLU(),
+            nn.Linear(BERT_HIDDEN_SIZE, 1)
+        )
         # raise NotImplementedError
         # raise NotImplementedError
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
@@ -228,7 +231,7 @@ def train_multitask(args):
         quora_train_data = SentencePairDataset(quora_train_data, args)
         quora_dev_data = SentencePairDataset(quora_dev_data, args)
         
-        # subset_percentage = 5
+        # subset_percentage = 10
         # # Select subsets
         # quora_train_data_subset = select_subset(quora_train_data, subset_percentage)
         # quora_dev_data_subset = select_subset(quora_dev_data, subset_percentage)
@@ -295,7 +298,9 @@ def train_multitask(args):
     model = model.to(device)
 
     lr = args.lr
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer_name = args.optimizer
+    optimizer = get_optimizer(optimizer_name, params=model.parameters(), lr=lr)
+    
     best_dev_acc = float("-inf")
 
     # Run for the specified number of epochs
@@ -577,6 +582,15 @@ def get_args():
         ),
     )
 
+    
+    parser.add_argument(
+        "--optimizer",
+        type=str,
+        help='choose between "adam" and "sophia"',
+        choices=("adam", "sophia"),
+        default="sophia",
+    )
+    
     # Hyperparameters
     parser.add_argument("--batch_size", help="sst: 64 can fit a 12GB GPU", type=int, default=64)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)

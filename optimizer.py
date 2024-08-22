@@ -3,6 +3,7 @@ from typing import Callable, Iterable, Tuple
 
 import torch
 from torch.optim import Optimizer
+from sophia.sophia import SophiaG
 
 
 class AdamW(Optimizer):
@@ -112,3 +113,18 @@ class AdamW(Optimizer):
 
 
         return loss
+
+
+# Adding Sophia to the optimizer options
+def get_optimizer(optimizer_name, params, **kwargs):
+    if optimizer_name == 'adam':
+        return AdamW(params, **kwargs)
+    elif optimizer_name == 'sophia':
+        # Use SophiaG with the best-suggested default parameters
+        lr = kwargs.get('lr', 2e-4)
+        betas = kwargs.get('betas', (0.965, 0.99))
+        rho = kwargs.get('rho', 0.01)
+        weight_decay = kwargs.get('weight_decay', 1e-4)
+        return SophiaG(params, lr=lr, betas=betas, rho=rho, weight_decay=weight_decay)
+    else:
+        raise ValueError(f"Optimizer {optimizer_name} not recognized")
