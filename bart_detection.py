@@ -12,7 +12,13 @@ from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
 from torch.optim.lr_scheduler import ExponentialLR
-
+from datasets import (
+    SentencePairDataset,
+    preprocess_string
+)
+import torch.nn.functional as F
+from multitask_classifier import select_subset
+import csv
 
 TQDM_DISABLE = False
 
@@ -60,6 +66,14 @@ class BartWithClassifier(nn.Module):
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
 
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
+        self.paraphrase_classifier = nn.Linear(self.bart.config.hidden_size * 2, 1)
+
+    def embedding(self, input_ids, attention_mask=None):
+        outputs = self.bart(input_ids=input_ids, attention_mask=attention_mask)
+        last_hidden_state = outputs.last_hidden_state
+        cls_output = last_hidden_state[:, 0, :]
+
+        return cls_output
 
     def forward(self, input_ids, attention_mask=None):
         # use the BartModel to obtain the last hidden state
@@ -70,6 +84,26 @@ class BartWithClassifier(nn.Module):
         out = self.classifier(cls_output)
 
         return out
+    
+    def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        """
+        Given a batch of pairs of sentences, outputs a single logit for predicting whether they are paraphrases.
+        Note that your output should be unnormalized (a logit); it will be passed to the sigmoid function
+        during evaluation, and handled as a logit by the appropriate loss function.
+        Dataset: Quora
+        """
+        ### TODO
+        # Get embeddings for both sentences
+        embedding_1 = self.embedding(input_ids_1, attention_mask_1)
+        embedding_2 = self.embedding(input_ids_2, attention_mask_2)
+
+        # Concatenate the embeddings
+        combined_embedding = torch.cat((embedding_1, embedding_2), dim=1)
+
+        # Pass through the paraphrase classifier
+        logit = self.paraphrase_classifier(combined_embedding)
+
+        return logit.squeeze(-1)
 
 
 def transform_data(dataset, args, max_length=512):
@@ -127,7 +161,7 @@ def transform_data(dataset, args, max_length=512):
     return dataloader
 
 
-def train_model(model, train_data, dev_data, device, args, early_stopping=None):
+def train_model(model, train_data, simul_dataloader, dev_data, device, args, early_stopping=None):
     """
     Train the model. You can use any training loop you want. We recommend starting with
     AdamW as your optimizer. You can take a look at the SST training loop for reference.
@@ -163,6 +197,28 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
             correct_predictions += (predicted_labels == labels).float().sum().item()
             total_predictions += labels.numel()
         
+        for batch in tqdm(
+            simul_dataloader, desc=f"train-qqp-{epoch+1:02}", disable=TQDM_DISABLE
+        ):
+            b_ids_1, b_mask_1, b_ids_2, b_mask_2, b_labels = (
+                batch["token_ids_1"],
+                batch["attention_mask_1"],
+                batch["token_ids_2"],
+                batch["attention_mask_2"],
+                batch["labels"],
+            )
+
+            b_ids_1 = b_ids_1.to(device)
+            b_mask_1 = b_mask_1.to(device)
+            b_ids_2 = b_ids_2.to(device)
+            b_mask_2 = b_mask_2.to(device)
+            b_labels = b_labels.to(device)
+
+            optimizer.zero_grad()
+            logits = model.predict_paraphrase(b_ids_1, b_mask_1, b_ids_2, b_mask_2)
+            loss = F.binary_cross_entropy_with_logits(logits, b_labels.float())
+            loss.backward()
+            optimizer.step()        
 
         avg_loss = total_loss / len(train_data)
         train_accuracy = correct_predictions / total_predictions
@@ -277,6 +333,7 @@ def get_args():
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--multi_label", action="store_true")
+    parser.add_argument("--local_files_only", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -288,6 +345,24 @@ def finetune_paraphrase_detection(args):
 
     train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-detection-test-student.csv", sep="\t")
+    quora_train_data = []
+    with open("data/quora-paraphrase-train.csv", "r", encoding="utf-8") as fp:
+        for record in csv.DictReader(fp, delimiter="\t"):
+            try:
+                sent_id = record["id"].lower().strip()
+                quora_train_data.append(
+                    (
+                        preprocess_string(record["sentence1"]),
+                        preprocess_string(record["sentence2"]),
+                        int(float(record["is_duplicate"])),
+                        sent_id,
+                    )
+                )
+            except:
+                pass
+    quora_train_data = select_subset(quora_train_data, 5)
+    quora_train_data = SentencePairDataset(quora_train_data, args)
+
 
     # Split train data into train and validation sets
     train_val_split = int(0.9 * len(train_dataset))
@@ -298,10 +373,17 @@ def finetune_paraphrase_detection(args):
     val_dataloader = transform_data(val_data, args)
     test_dataloader = transform_data(test_dataset, args)
 
+    quora_train_dataloader = DataLoader(
+        quora_train_data,
+        shuffle=True,
+        batch_size=args.batch_size,
+        collate_fn=quora_train_data.collate_fn,
+    )
+
     print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
     early_stopping = EarlyStopping(args.checkpoint_file, patience=4)
-    model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
+    model = train_model(model, train_dataloader, quora_train_dataloader, val_dataloader, device, args, early_stopping)
 
     # torch.save(model.state_dict(), args.checkpoint_file)
     print(f"Training finished. Saved model at {args.checkpoint_file}")
