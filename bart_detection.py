@@ -323,6 +323,7 @@ def finetune_paraphrase_detection(args):
     # torch.save(model.state_dict(), args.checkpoint_file)
     print(f"Training finished. Saved model at {args.checkpoint_file}")
 
+    model.load_state_dict(torch.load(args.checkpoint_file))
     accuracy, matthews_corr = evaluate_model(model, val_dataloader, device)
     print(f"The accuracy of the model is: {accuracy:.3f}")
     print(f"Matthews Correlation Coefficient of the model is: {matthews_corr:.3f}")
