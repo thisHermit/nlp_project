@@ -12,6 +12,8 @@ from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
 from torch.optim.lr_scheduler import ExponentialLR
+from smart_pytorch import SMARTLoss
+import torch.nn.functional as F
 
 
 TQDM_DISABLE = False
@@ -69,6 +71,24 @@ class BartWithClassifier(nn.Module):
         std = torch.exp(0.5*logvar)
         eps = torch.randn_like(std)
         return mu + eps*std
+
+    def eval_fn(self, embeds, attention_mask=None):
+        # use the BartModel to obtain the last hidden state
+        outputs = self.bart(inputs_embeds=embeds, attention_mask=attention_mask, decoder_inputs_embeds=embeds)
+        last_hidden_state = outputs.last_hidden_state
+        cls_output = last_hidden_state[:, 0, :]
+
+        # add two fully connected layers to obtain the logits
+        mu = self.fc_mu(cls_output)
+        logvar = self.fc_logvar(cls_output)
+
+        z = self.reparameterize(mu, logvar) if self.training else mu
+
+        z_out = self.fc_z(z)
+        
+        out = self.classifier(z_out + cls_output) # add residual
+
+        return out
 
     def forward(self, input_ids, attention_mask=None):
         # use the BartModel to obtain the last hidden state
@@ -143,6 +163,18 @@ def transform_data(dataset, args, max_length=512):
     
     return dataloader
 
+def smart_loss(model, embeddings, logits, epsilon=1e-3):
+    # Generate perturbed embeddings
+    embed_norm = embeddings.norm(p=2, dim=-1, keepdim=True)
+    noise = torch.randn_like(embeddings) * epsilon * embed_norm
+    perturbed_embeddings = embeddings + noise
+
+    # Get predictions for perturbed embeddings
+    perturbed_logits = model.eval_fn(perturbed_embeddings)
+
+    # Compute KL divergence
+    kl_div = nn.KLDivLoss(reduction="batchmean")
+    return kl_div(F.log_softmax(perturbed_logits, dim=-1), F.softmax(logits, dim=-1))
 
 def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     """
@@ -159,6 +191,7 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     optimizer = AdamW(model.parameters(), lr=2e-5)
     scheduler = ExponentialLR(optimizer, gamma=0.9)
     criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
+    #regularizer = SMARTLoss(eval_fn = model.eval, loss_fn = criterion)
     
     num_epochs = args.epochs
 
@@ -173,6 +206,9 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
             optimizer.zero_grad()
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
             loss = criterion(outputs, labels)
+            embeddings = model.bart.shared(input_ids)
+            smart_regularization = smart_loss(model, embeddings, outputs)
+            total_loss = loss + 0.02 * smart_regularization
             loss.backward()
             optimizer.step()
             
