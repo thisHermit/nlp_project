@@ -71,6 +71,8 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = False
             elif config.option == "finetune":
                 param.requires_grad = True
+                
+        self.pooling_type = args.pooling_type  # 'cls', 'mean', or 'max'
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
@@ -82,6 +84,9 @@ class MultitaskBERT(nn.Module):
         # raise NotImplementedError
         # raise NotImplementedError
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        
+        # Initialize weights for the combined loss for the model
+        self.weight_cosine, self.weight_bce, self.weight_ranking = (0.33, 0.33, 0.34)
 
 
     def forward(self, input_ids, attention_mask):
@@ -92,11 +97,22 @@ class MultitaskBERT(nn.Module):
         # Here, you can start by just returning the embeddings straight from BERT.
         # When thinking of improvements, you can later try modifying this
         # (e.g., by adding other layers).
-        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        output_layer = bert_model['last_hidden_state'][:, 0, :]
-        return output_layer
+        bert_output = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        return bert_output
         # ### TODO
         # raise NotImplementedError
+        
+    def get_sentence_embeddings(self, input_ids, attention_mask):
+        bert_output = self.forward(input_ids, attention_mask)
+        
+        if self.pooling_type == 'cls':
+            return bert_output['last_hidden_state'][:, 0, :]
+        elif self.pooling_type == 'mean':
+            return (bert_output['last_hidden_state']* attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1).unsqueeze(-1)
+        elif self.pooling_type == 'max':
+            return torch.max(bert_output['last_hidden_state'] * attention_mask.unsqueeze(-1), dim=1)[0]
+        else:
+            raise ValueError("Invalid pooling type. Choose 'cls', 'mean', or 'max'.")
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -123,13 +139,11 @@ class MultitaskBERT(nn.Module):
         """
         ### TODO
         # Get embeddings for both sentences
-        embedding_1 = self.forward(input_ids_1, attention_mask_1)
-        embedding_2 = self.forward(input_ids_2, attention_mask_2)
-
-        # Concatenate the embeddings
+        embedding_1 = self.get_sentence_embeddings(input_ids_1, attention_mask_1)
+        embedding_2 = self.get_sentence_embeddings(input_ids_2, attention_mask_2)
+        
+        # Concatenate embeddings and pass through linear head
         combined_embedding = torch.cat((embedding_1, embedding_2), dim=1)
-
-        # Pass through the paraphrase classifier
         logit = self.paraphrase_classifier(combined_embedding)
 
         return logit.squeeze(-1)
@@ -163,6 +177,44 @@ class MultitaskBERT(nn.Module):
         """
         ### TODO
         raise NotImplementedError
+    
+    def multiple_negatives_ranking_loss(self, embeddings1, embeddings2):
+        """
+        Implementation of MultipleNegativesRankingLoss.
+        """
+
+        # Compute cosine similarities between embeddings1 and all embeddings2
+        scores = torch.matmul(embeddings1, embeddings2.T)  # (batch_size, batch_size)
+
+        # Apply log-softmax to the scores
+        log_probs = F.log_softmax(scores, dim=1)
+
+        # The loss is the negative log likelihood of the correct (diagonal) elements
+        loss = -torch.mean(torch.diag(log_probs))
+
+        return loss
+    
+    def combined_loss(self, embeddings1, embeddings2, logits, targets):
+        # Cosine Embedding Loss
+        cosine_labels = 2 * targets.float() - 1  # Convert 0/1 to -1/1
+        cosine_loss = F.cosine_embedding_loss(embeddings1, embeddings2, cosine_labels)
+        
+        # Binary Cross Entropy Loss
+        bce_loss = F.binary_cross_entropy_with_logits(logits, targets.float())
+        
+        # Multiple Negatives Ranking Loss
+        ranking_loss = self.multiple_negatives_ranking_loss(embeddings1, embeddings2)
+        
+        # Combined Loss
+        combined_loss = (
+            self.weight_cosine * cosine_loss +
+            self.weight_bce * bce_loss +
+            self.weight_ranking * ranking_loss
+        )
+        
+        return combined_loss
+        
+        
 
 
 def save_model(model, optimizer, args, config, filepath):
@@ -387,11 +439,16 @@ def train_multitask(args):
                 b_labels = b_labels.to(device)
 
                 optimizer.zero_grad()
+                
+                embeddings1 = model.get_sentence_embeddings(b_ids_1, b_mask_1)
+                embeddings2 = model.get_sentence_embeddings(b_ids_2, b_mask_2)
                 logits = model.predict_paraphrase(b_ids_1, b_mask_1, b_ids_2, b_mask_2)
-                loss = F.binary_cross_entropy_with_logits(logits, b_labels.float())
+                
+                loss = model.combined_loss(embeddings1, embeddings2, logits, b_labels)
+                
                 loss.backward()
                 optimizer.step()
-
+                
                 train_loss += loss.item()
                 num_batches += 1
             
@@ -589,6 +646,14 @@ def get_args():
         help='choose between "adam" and "sophia"',
         choices=("adam", "sophia"),
         default="sophia",
+    )
+    
+    parser.add_argument(
+        "--pooling_type",
+        type=str,
+        choices=["cls", "mean", "max"],
+        default="cls",
+        help="Type of pooling to use for sentence embeddings"
     )
     
     # Hyperparameters
