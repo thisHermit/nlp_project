@@ -185,14 +185,16 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
 
         avg_loss = total_loss / len(train_data)
         train_accuracy = correct_predictions / total_predictions
-        dev_accuracy, matthews_coefficient = evaluate_model(model, dev_data, device)
+        dev_accuracy, dev_matthews_coefficient = evaluate_model(model, dev_data, device)
+        total_train_accuracy, total_train_matthews_coefficient = evaluate_model(model, train_data, device)
 
         print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"Training Loss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
-        print(f"Validation Matthews Coefficient: {matthews_coefficient:.4f}")
+        print(f"Training step:\nLoss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
+        print(f"Validation:\n Accuracy: {dev_accuracy} Matthews Coefficient: {dev_matthews_coefficient:.4f}")
+        print(f"Total Train:\n Accuracy: {total_train_accuracy} Matthews Coefficient: {total_train_matthews_coefficient:.4f}")
         print()
         if early_stopping is not None:
-            early_stopping(-matthews_coefficient, model)
+            early_stopping(-dev_matthews_coefficient, model)
             if early_stopping.early_stop:
                 print("Early Stopping...")
                 break
