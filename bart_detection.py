@@ -12,7 +12,6 @@ from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
 from torch.optim.lr_scheduler import ExponentialLR
-from smart_pytorch import SMARTLoss
 import torch.nn.functional as F
 
 
@@ -61,9 +60,6 @@ class BartWithClassifier(nn.Module):
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
         # self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
-        self.fc_mu = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for mu
-        self.fc_logvar = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for log variance
-        self.fc_z = nn.Linear(latent_dims, self.bart.config.hidden_size)
 
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
 
@@ -78,16 +74,7 @@ class BartWithClassifier(nn.Module):
         last_hidden_state = outputs.last_hidden_state
         cls_output = last_hidden_state[:, 0, :]
 
-        # add two fully connected layers to obtain the logits
-        mu = self.fc_mu(cls_output)
-        logvar = self.fc_logvar(cls_output)
-
-        z = self.reparameterize(mu, logvar) if self.training else mu
-
-        z_out = self.fc_z(z)
-        
-        out = self.classifier(z_out + cls_output) # add residual
-
+        out = self.classifier(cls_output)
         return out
 
     def forward(self, input_ids, attention_mask=None):
