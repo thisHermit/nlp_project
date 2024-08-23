@@ -83,15 +83,7 @@ class BartWithClassifier(nn.Module):
         last_hidden_state = outputs.last_hidden_state
         cls_output = last_hidden_state[:, 0, :]
 
-        # add two fully connected layers to obtain the logits
-        mu = self.fc_mu(cls_output)
-        logvar = self.fc_logvar(cls_output)
-
-        z = self.reparameterize(mu, logvar) if self.training else mu
-
-        z_out = self.fc_z(z)
-        
-        out = self.classifier(z_out + cls_output) # add residual
+        out = self.classifier(cls_output) # add residual
 
         return out
 
