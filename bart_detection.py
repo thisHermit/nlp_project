@@ -58,33 +58,16 @@ class BartWithClassifier(nn.Module):
         super(BartWithClassifier, self).__init__()
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
-        # self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
-        self.fc_mu = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for mu
-        self.fc_logvar = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for log variance
-        self.fc_z = nn.Linear(latent_dims, self.bart.config.hidden_size)
 
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
-        eps = torch.randn_like(std)
-        return mu + eps*std
 
     def forward(self, input_ids, attention_mask=None):
         # use the BartModel to obtain the last hidden state
         outputs = self.bart(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = outputs.last_hidden_state
         cls_output = last_hidden_state[:, 0, :]
-
-        # add two fully connected layers to obtain the logits
-        mu = self.fc_mu(cls_output)
-        logvar = self.fc_logvar(cls_output)
-
-        z = self.reparameterize(mu, logvar) if self.training else mu
-
-        z_out = self.fc_z(z)
         
-        out = self.classifier(z_out + cls_output) # add residual
+        out = self.classifier(cls_output)
 
         return out
 
@@ -157,7 +140,6 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     """
     model.train()
     optimizer = AdamW(model.parameters(), lr=2e-5)
-    scheduler = ExponentialLR(optimizer, gamma=0.9)
     criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
     
     num_epochs = args.epochs
@@ -181,7 +163,6 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
             correct_predictions += (predicted_labels == labels).float().sum().item()
             total_predictions += labels.numel()
         
-        scheduler.step()
 
         avg_loss = total_loss / len(train_data)
         train_accuracy = correct_predictions / total_predictions
