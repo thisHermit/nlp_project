@@ -29,7 +29,7 @@ print("Current working directory:", os.getcwd())
 TQDM_DISABLE = False
 
 
-def transform_data(dataset, max_length=256):
+def transform_data(dataset, args, max_length=256, shuffle=True):
     """
     Turn the data to the format you want to use.
     Use AutoTokenizer to obtain encoding (input_ids and attention_mask).
@@ -69,7 +69,7 @@ def transform_data(dataset, max_length=256):
         labels = torch.stack(labels)
         
         dataset = TensorDataset(input_ids, attention_masks, labels)
-        dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=shuffle)
         
         return dataloader
     except Exception as e:
@@ -77,7 +77,7 @@ def transform_data(dataset, max_length=256):
         raise NotImplementedError
 
 
-def train_model(model, train_data, dev_data, device, tokenizer):
+def train_model(model, train_data, dev_data, args, device, tokenizer):
     """
     Train the model. Return and save the model.
     """
@@ -110,8 +110,8 @@ def train_model(model, train_data, dev_data, device, tokenizer):
             print(f"Epoch {epoch+1}/{num_epochs}, Average training loss: {avg_train_loss:.4f}")
             
             # Evaluate on dev set
-            dev_loss = evaluate_model(model, dev_data, device, tokenizer)
-            print(f"Epoch {epoch+1}/{num_epochs}, Dev loss: {dev_loss:.4f}")
+            dev_score = evaluate_model(model, dev_data, args, device, tokenizer)
+            print(f"Epoch {epoch+1}/{num_epochs}, Dev score: {dev_score:.4f}")
         
         return model
     except Exception as e:
@@ -162,7 +162,7 @@ def test_model(test_data, test_ids, device, model, tokenizer):
     raise NotImplementedError
 
 
-def evaluate_model(model, test_data, device, tokenizer):
+def evaluate_model(model, test_data, args, device, tokenizer):
     """
     You can use your train/validation set to evaluate models performance with the BLEU score.
     test_data is a Pandas Dataframe, the column "sentence1" contains all input sentence and 
@@ -172,7 +172,7 @@ def evaluate_model(model, test_data, device, tokenizer):
     bleu = BLEU()
     predictions = []
 
-    dataloader = transform_data(test_data, shuffle=False)
+    dataloader = transform_data(test_data, args, shuffle=False)
     with torch.no_grad():
         for batch in dataloader: 
             input_ids, attention_mask, _ = batch
@@ -229,6 +229,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
     return args
 
@@ -246,17 +248,17 @@ def finetune_paraphrase_generation(args):
     # You might do a split of the train data into train/validation set here
     # ...
 
-    train_data = transform_data(train_dataset)
-    dev_data = transform_data(dev_dataset)
-    test_data = transform_data(test_dataset)
+    train_data = transform_data(train_dataset, args)
+    dev_data = transform_data(dev_dataset, args)
+    test_data = transform_data(test_dataset, args, shuffle=False)
 
     print(f"Loaded {len(train_dataset)} training samples.")
 
-    model = train_model(model, train_data, dev_dataset, device, tokenizer)
+    model = train_model(model, train_data, dev_dataset, args, device, tokenizer)
 
     print("Training finished.")
 
-    bleu_score = evaluate_model(model, dev_dataset, device, tokenizer)
+    bleu_score = evaluate_model(model, dev_dataset, args, device, tokenizer)
     print(f"The penalized BLEU-score of the model is: {bleu_score:.3f}")
 
     test_ids = test_dataset["id"]
