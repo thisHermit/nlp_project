@@ -84,7 +84,7 @@ def train_model(model, train_data, dev_data, args, device, tokenizer):
     ### TODO
     try:
         optimizer = AdamW(model.parameters(), lr=5e-5)
-        num_epochs = 3
+        num_epochs = args.epochs
         
         for epoch in range(num_epochs):
             model.train()
@@ -230,7 +230,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
     parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=32)
     args = parser.parse_args()
     return args
 
