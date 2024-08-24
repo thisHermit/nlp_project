@@ -23,6 +23,9 @@ from datasets import (
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import get_optimizer
 
+from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
+from torch.optim.lr_scheduler import OneCycleLR
+
 TQDM_DISABLE = False
 
 # Function to select a subset
@@ -47,6 +50,57 @@ def seed_everything(seed=11711):
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 
+class SelfAttentionPooling(nn.Module):
+    def __init__(self, hidden_size):
+        super(SelfAttentionPooling, self).__init__()
+        self.attention_weights = nn.Linear(hidden_size, 1)
+
+    def forward(self, embeddings, attention_mask):
+        # Calculate the attention scores
+        attention_scores = self.attention_weights(embeddings).squeeze(-1)
+        # Apply the mask to ignore padding tokens
+        attention_scores = attention_scores.masked_fill(attention_mask == 0, -1e9)
+        # Calculate the attention weights
+        attention_weights = torch.softmax(attention_scores, dim=1)
+        # Multiply the attention weights with the embeddings
+        weighted_embeddings = embeddings * attention_weights.unsqueeze(-1)
+        # Sum the weighted embeddings to get the sentence embedding
+        sentence_embedding = weighted_embeddings.sum(dim=1)
+        return sentence_embedding
+    
+
+class MultiHeadAttentionLayer(nn.Module):
+    def __init__(self, hidden_size, num_heads, dropout_prob):
+        super(MultiHeadAttentionLayer, self).__init__()
+        self.mha = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, dropout=dropout_prob)
+        self.dropout = nn.Dropout(dropout_prob)
+        self.layer_norm = nn.LayerNorm(hidden_size)
+        
+    def forward(self, embeddings, attention_mask=None):
+        # embeddings: (batch_size, seq_length, hidden_size)
+        # attention_mask: (batch_size, seq_length)
+        
+        # Prepare for multi-head attention (requires batch_first=False)
+        embeddings = embeddings.transpose(0, 1)  # (seq_length, batch_size, hidden_size)
+        
+        # Apply multi-head attention
+        attention_output, _ = self.mha(embeddings, embeddings, embeddings, key_padding_mask=attention_mask)
+        
+        # Apply residual connection
+        attention_output = attention_output + embeddings
+        
+        # Apply dropout and layer normalization
+        attention_output = self.layer_norm(self.dropout(attention_output))
+        
+        # Return the output in the original shape (batch_size, seq_length, hidden_size)
+        return attention_output.transpose(0, 1)
+    
+# Default MHA Configuration
+mha_config = {
+    'num_heads': 8,
+    'dropout_prob': 0.3,
+}
+    
 
 class MultitaskBERT(nn.Module):
     """
@@ -73,6 +127,14 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = True
                 
         self.pooling_type = args.pooling_type  # 'cls', 'mean', or 'max'
+        if self.pooling_type == 'self_attention':
+            self.self_attention_pooling = SelfAttentionPooling(BERT_HIDDEN_SIZE)
+            
+        self.use_mha = args.use_mha
+        # Multi-Head Attention Layer
+        if self.use_mha:
+            self.mha_layer = MultiHeadAttentionLayer(hidden_size=BERT_HIDDEN_SIZE, num_heads=mha_config['num_heads'], dropout_prob=mha_config['dropout_prob'])
+        
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
@@ -87,6 +149,24 @@ class MultitaskBERT(nn.Module):
         
         # Initialize weights for the combined loss for the model
         self.weight_cosine, self.weight_bce, self.weight_ranking = (0.33, 0.33, 0.34)
+        
+        # SMART Loss setup
+        self.smart_loss = SMARTLoss(
+            eval_fn=self.smart_eval_fn,
+            loss_fn=F.binary_cross_entropy_with_logits,
+            loss_last_fn=sym_kl_loss,
+            step_size=1e-3,
+            num_steps=1
+        )
+        
+    
+    def smart_eval_fn(self, embed):
+        """ 
+        Evaluation function for SMART loss.
+        Here, we assume the evaluation function returns the output logits for paraphrase detection.
+        """
+        logits = self.paraphrase_classifier(embed)
+        return logits.squeeze(-1)
 
 
     def forward(self, input_ids, attention_mask):
@@ -111,8 +191,10 @@ class MultitaskBERT(nn.Module):
             return (bert_output['last_hidden_state']* attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1).unsqueeze(-1)
         elif self.pooling_type == 'max':
             return torch.max(bert_output['last_hidden_state'] * attention_mask.unsqueeze(-1), dim=1)[0]
+        elif self.pooling_type == 'self_attention':
+            return self.self_attention_pooling(bert_output['last_hidden_state'], attention_mask)
         else:
-            raise ValueError("Invalid pooling type. Choose 'cls', 'mean', or 'max'.")
+            raise ValueError("Invalid pooling type. Choose 'cls', 'mean', 'max', or 'self_attention'.")
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -141,6 +223,10 @@ class MultitaskBERT(nn.Module):
         # Get embeddings for both sentences
         embedding_1 = self.get_sentence_embeddings(input_ids_1, attention_mask_1)
         embedding_2 = self.get_sentence_embeddings(input_ids_2, attention_mask_2)
+        
+        if self.use_mha:
+            embedding_1 = self.mha_layer(embedding_1.unsqueeze(1)).squeeze(1)
+            embedding_2 = self.mha_layer(embedding_2.unsqueeze(1)).squeeze(1)
         
         # Concatenate embeddings and pass through linear head
         combined_embedding = torch.cat((embedding_1, embedding_2), dim=1)
@@ -214,6 +300,11 @@ class MultitaskBERT(nn.Module):
         
         return combined_loss
         
+    def smart_regularized_loss(self, embeddings1, embeddings2, logits, targets):
+        combined_loss = self.combined_loss(embeddings1, embeddings2, logits, targets)
+        smart_loss = self.smart_loss(torch.cat((embeddings1, embeddings2), dim=1), logits)
+        total_loss = combined_loss + smart_loss
+        return total_loss
         
 
 
@@ -237,6 +328,52 @@ def save_model(model, optimizer, args, config, filepath):
 
     torch.save(save_info, filepath)
     print(f"Saving the model to {filepath}.")
+    
+class EarlyStopping:
+    def __init__(self, patience=3, verbose=True, delta=0, path='checkpoint.pt'):
+        """
+        Args:
+            patience (int): How long to wait after last time dev accuracy improved.
+                            Default: 3
+            verbose (bool): If True, prints a message for each improvement. 
+                            Default: False
+            delta (float): Minimum change in the monitored accuracy to qualify as an improvement.
+                            Default: 0
+            path (str): Path for the checkpoint to be saved to.
+                            Default: 'checkpoint.pt'
+        """
+        self.patience = patience
+        self.verbose = verbose
+        self.delta = delta
+        self.best_score = None
+        self.early_stop = False
+        self.counter = 0
+        self.best_epoch = 0
+        self.path = path
+        self.dev_acc_max = float("-inf")
+
+    def __call__(self, dev_acc, model, epoch):
+        if self.best_score is None:
+            self.best_score = dev_acc
+            self.save_checkpoint(dev_acc, model)
+        elif dev_acc < self.best_score + self.delta:
+            self.counter += 1
+            if self.verbose:
+                print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = dev_acc
+            self.save_checkpoint(dev_acc, model)
+            self.counter = 0
+            self.best_epoch = epoch
+
+    def save_checkpoint(self, dev_acc, model):
+        '''Saves model when dev accuracy increases.'''
+        if self.verbose:
+            print(f'Dev accuracy increased ({self.dev_acc_max:.6f} --> {dev_acc:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), self.path)
+        self.dev_acc_max = dev_acc
 
 
 # TODO Currently only trains on SST dataset!
@@ -353,6 +490,12 @@ def train_multitask(args):
     optimizer_name = args.optimizer
     optimizer = get_optimizer(optimizer_name, params=model.parameters(), lr=lr)
     
+    # Define the OneCycleLR scheduler
+    max_lr = args.lr * 10  # Typically, OneCycleLR uses a max_lr 10 times the base lr
+    scheduler = OneCycleLR(optimizer, max_lr=max_lr, steps_per_epoch=len(quora_train_dataloader), epochs=args.epochs)
+    # Setup EarlyStopping
+    early_stopping = EarlyStopping(patience=4, verbose=True, path=args.filepath)
+    
     best_dev_acc = float("-inf")
 
     # Run for the specified number of epochs
@@ -382,6 +525,7 @@ def train_multitask(args):
                 loss = F.cross_entropy(logits, b_labels.view(-1))
                 loss.backward()
                 optimizer.step()
+                scheduler.step()  # Update learning rate with OneCycleLR
 
                 train_loss += loss.item()
                 num_batches += 1
@@ -444,7 +588,7 @@ def train_multitask(args):
                 embeddings2 = model.get_sentence_embeddings(b_ids_2, b_mask_2)
                 logits = model.predict_paraphrase(b_ids_1, b_mask_1, b_ids_2, b_mask_2)
                 
-                loss = model.combined_loss(embeddings1, embeddings2, logits, b_labels)
+                loss = model.smart_regularized_loss(embeddings1, embeddings2, logits, b_labels)
                 
                 loss.backward()
                 optimizer.step()
@@ -494,10 +638,22 @@ def train_multitask(args):
         print(
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
+        
+        # Check early stopping criteria
+        early_stopping(dev_acc, model, epoch)
+
+        if early_stopping.early_stop:
+            print("Early stopping triggered")
+            break
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
             save_model(model, optimizer, args, config, args.filepath)
+            
+    if early_stopping.best_epoch != epoch:
+        # After training loop ends, load the best model and save it as the final model
+        model.load_state_dict(torch.load(early_stopping.path))
+        save_model(model, optimizer, args, config, args.filepath)
 
 
 def test_model(args):
@@ -651,10 +807,14 @@ def get_args():
     parser.add_argument(
         "--pooling_type",
         type=str,
-        choices=["cls", "mean", "max"],
+        choices=["cls", "mean", "max", "self_attention"],
         default="cls",
         help="Type of pooling to use for sentence embeddings"
     )
+    
+    parser.add_argument("--use_mha", action="store_true", help="Use Multi-Head Attention in the Paraphrase Classifier")
+    
+    
     
     # Hyperparameters
     parser.add_argument("--batch_size", help="sst: 64 can fit a 12GB GPU", type=int, default=64)
@@ -665,6 +825,9 @@ def get_args():
         help="learning rate, default lr for 'pretrain': 1e-3, 'finetune': 1e-5",
         default=1e-3 if args.option == "pretrain" else 1e-5,
     )
+    
+    parser.add_argument("--smart_lambda", type=float, default=0.02, help="Lambda for SMART regularization")
+    
     parser.add_argument("--local_files_only", action="store_true")
 
     args = parser.parse_args()
