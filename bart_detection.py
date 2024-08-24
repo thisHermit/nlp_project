@@ -172,9 +172,13 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
         train_accuracy = correct_predictions / total_predictions
         dev_accuracy, matthews_coefficient = evaluate_model(model, dev_data, device)
 
+        dev_accuracy, dev_matthews_coefficient = evaluate_model(model, dev_data, device)
+        total_train_accuracy, total_train_matthews_coefficient = evaluate_model(model, train_data, device)
+
         print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"Training Loss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
-        print(f"Validation Matthews Coefficient: {matthews_coefficient:.4f}")
+        print(f"Training step:\nLoss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
+        print(f"Validation:\n Accuracy: {dev_accuracy} Matthews Coefficient: {dev_matthews_coefficient:.4f}")
+        print(f"Total Train:\n Accuracy: {total_train_accuracy} Matthews Coefficient: {total_train_matthews_coefficient:.4f}")
         print()
         if early_stopping is not None:
             early_stopping(-matthews_coefficient, model)
@@ -302,12 +306,12 @@ def finetune_paraphrase_detection(args):
 
     print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
-    early_stopping = EarlyStopping('ptd_early_stop.ckpt', patience=3)
+    early_stopping = EarlyStopping(args.checkpoint_file, patience=4)
     model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
 
-    torch.save(model.state_dict(), args.checkpoint_file)
     print(f"Training finished. Saved model at {args.checkpoint_file}")
 
+    model.load_state_dict(torch.load(args.checkpoint_file))
     accuracy, matthews_corr = evaluate_model(model, val_dataloader, device)
     print(f"The accuracy of the model is: {accuracy:.3f}")
     print(f"Matthews Correlation Coefficient of the model is: {matthews_corr:.3f}")
