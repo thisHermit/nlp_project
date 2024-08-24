@@ -52,24 +52,65 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.model_checkpoint_path)
         self.val_loss_min = val_loss
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = nn.functional.cross_entropy(inputs, targets, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
 
 class BartWithClassifier(nn.Module):
-    def __init__(self, latent_dims=7, num_labels=7):
+    def __init__(self, dropout_rate=0.3, num_labels=7):
         super(BartWithClassifier, self).__init__()
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
 
-        self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
+        linear_size = self.bart.config.hidden_size
+        self.linear1 = nn.Sequential(
+            nn.Linear(linear_size, linear_size),
+            nn.LayerNorm(linear_size),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+        )
+        self.linear2 = nn.Sequential(
+            nn.Linear(linear_size, linear_size),
+            nn.LayerNorm(linear_size),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+        )
+        self.linear3 = nn.Sequential(
+            nn.Linear(linear_size, linear_size),
+            nn.LayerNorm(linear_size),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+        )
+        self.linear4 = nn.Linear(linear_size, num_labels)
 
     def forward(self, input_ids, attention_mask=None):
         # use the BartModel to obtain the last hidden state
         outputs = self.bart(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = outputs.last_hidden_state
-        cls_output = last_hidden_state[:, 0, :]
+        cls_output = torch.mean(last_hidden_state, dim=1)
         
-        out = self.classifier(cls_output)
+        out1 = self.linear1(cls_output)
+        out2 = self.linear2(cls_output + out1)
+        out3 = self.linear3(cls_output + out2)
+        out4 = self.linear4(cls_output + out3)
 
-        return out
+        return out4
 
 
 def transform_data(dataset, args, max_length=512):
@@ -140,7 +181,7 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     """
     model.train()
     optimizer = AdamW(model.parameters(), lr=2e-5)
-    criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
+    criterion = nn.BCEWithLogitsLoss() # since the target labels are binary
     
     num_epochs = args.epochs
 
