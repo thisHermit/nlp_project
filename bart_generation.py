@@ -37,45 +37,35 @@ def transform_data(dataset, args, max_length=256, shuffle=True):
     sentence_1 + SEP + sentence_1 segment location + SEP + paraphrase types.
     Return Data Loader.
     """
-    ### TODO
-    try:
-        tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
+    
+    input_ids = []
+    attention_masks = []
+    labels = []
+    
+    for _, row in dataset.iterrows():
+        sentence1 = row['sentence1']
+        sentence1_segment = ' '.join(map(str, eval(row['sentence1_segment_location'])))
+        paraphrase_types = ' '.join(map(str, eval(row['paraphrase_types'])))
         
-        input_ids = []
-        attention_masks = []
-        labels = []
+        input_text = f"{sentence1} </s> {sentence1_segment} </s> {paraphrase_types}"
+        target_text = row['sentence2'] if 'sentence2' in row else ""
         
-        for _, row in dataset.iterrows():
-            try:
-                sentence1 = row['sentence1']
-                sentence1_segment = ' '.join(map(str, eval(row['sentence1_segment_location'])))
-                paraphrase_types = ' '.join(map(str, eval(row['paraphrase_types'])))
-                
-                input_text = f"{sentence1} </s> {sentence1_segment} </s> {paraphrase_types}"
-                target_text = row['sentence2'] if 'sentence2' in row else ""
-                
-                inputs = tokenizer(input_text, max_length=max_length, padding='max_length', truncation=True, return_tensors='pt')
-                targets = tokenizer(target_text, max_length=max_length, padding='max_length', truncation=True, return_tensors='pt')
-                
-                input_ids.append(inputs['input_ids'].squeeze())
-                attention_masks.append(inputs['attention_mask'].squeeze())
-                labels.append(targets['input_ids'].squeeze())
-            except Exception as e:
-                print(f"Error processing row: {e}")
-                continue
+        inputs = tokenizer(input_text, max_length=max_length, padding='max_length', truncation=True, return_tensors='pt')
+        targets = tokenizer(target_text, max_length=max_length, padding='max_length', truncation=True, return_tensors='pt')
         
-        input_ids = torch.stack(input_ids)
-        attention_masks = torch.stack(attention_masks)
-        labels = torch.stack(labels)
-        
-        dataset = TensorDataset(input_ids, attention_masks, labels)
-        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=shuffle)
-        
-        return dataloader
-    except Exception as e:
-        print(f"Error in transform_data: {e}")
-        raise NotImplementedError
-
+        input_ids.append(inputs['input_ids'].squeeze())
+        attention_masks.append(inputs['attention_mask'].squeeze())
+        labels.append(targets['input_ids'].squeeze())
+    
+    input_ids = torch.stack(input_ids)
+    attention_masks = torch.stack(attention_masks)
+    labels = torch.stack(labels)
+    
+    dataset = TensorDataset(input_ids, attention_masks, labels)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=shuffle)
+    
+    return dataloader
 
 def train_model(model, train_data, train_dataset, dev_data, args, device, tokenizer):
     """
@@ -91,20 +81,17 @@ def train_model(model, train_data, train_dataset, dev_data, args, device, tokeni
             total_loss = 0
             
             for batch in tqdm(train_data, disable=TQDM_DISABLE):
-                try:
-                    input_ids, attention_mask, labels = [b.to(device) for b in batch]
-                    
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                    loss = outputs.loss
-                    
-                    loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad()
-                    
-                    total_loss += loss.item()
-                except Exception as e:
-                    print(f"Error processing batch: {e}")
-                    continue
+                input_ids, attention_mask, labels = [b.to(device) for b in batch]
+                
+                outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+                identity_loss = torch.mean((input_ids == labels).float()) * 10
+                loss = outputs.loss + identity_loss 
+                
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+                
+                total_loss += loss.item()
             
             avg_train_loss = total_loss / len(train_data)
             train_score = evaluate_model(model, train_dataset, args, device, tokenizer)
@@ -232,7 +219,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
-    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=32)
     args = parser.parse_args()
     return args
