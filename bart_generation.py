@@ -77,7 +77,7 @@ def transform_data(dataset, args, max_length=256, shuffle=True):
         raise NotImplementedError
 
 
-def train_model(model, train_data, dev_data, args, device, tokenizer):
+def train_model(model, train_data, train_dataset, dev_data, args, device, tokenizer):
     """
     Train the model. Return and save the model.
     """
@@ -107,16 +107,18 @@ def train_model(model, train_data, dev_data, args, device, tokenizer):
                     continue
             
             avg_train_loss = total_loss / len(train_data)
-            print(f"Epoch {epoch+1}/{num_epochs}, Average training loss: {avg_train_loss:.4f}")
-            
+            train_score = evaluate_model(model, train_dataset, args, device, tokenizer)
             # Evaluate on dev set
             dev_score = evaluate_model(model, dev_data, args, device, tokenizer)
-            print(f"Epoch {epoch+1}/{num_epochs}, Dev score: {dev_score:.4f}")
+            print(f"Epoch {epoch+1}/{num_epochs}, Average training loss: {avg_train_loss:.4f}")
+            print(f"Train score: {train_score:.4f}")
+            print(f"Dev score: {dev_score:.4f}")
+            print()
         
         return model
     except Exception as e:
         print(f"Error in train_model: {e}")
-        raise NotImplementedError
+        raise e
 
 
 def test_model(test_data, test_ids, device, model, tokenizer):
@@ -158,11 +160,10 @@ def test_model(test_data, test_ids, device, model, tokenizer):
         return results_df
     except Exception as e:
         print(f"Error in test_model: {e}")
-        raise NotImplementedError
-    raise NotImplementedError
+        raise e
 
 
-def evaluate_model(model, test_data, args, device, tokenizer):
+def evaluate_model(model, test_data, args, device, tokenizer, verbose=False):
     """
     You can use your train/validation set to evaluate models performance with the BLEU score.
     test_data is a Pandas Dataframe, the column "sentence1" contains all input sentence and 
@@ -204,13 +205,15 @@ def evaluate_model(model, test_data, args, device, tokenizer):
     # Penalize BLEU score if its to close to the input
     bleu_score_inputs = 100 - bleu.corpus_score(inputs, [predictions]).score
 
-    print(f"BLEU Score: {bleu_score_reference}", f"Negative BLEU Score with input: {bleu_score_inputs}")
+    if verbose:
+        print(f"BLEU Score: {bleu_score_reference}", f"Negative BLEU Score with input: {bleu_score_inputs}")
     
 
     # Penalize BLEU and rescale it to 0-100
     # If you perfectly predict all the targets, you should get an penalized BLEU score of around 52
     penalized_bleu = bleu_score_reference*bleu_score_inputs/ 52
-    print(f"Penalized BLEU Score: {penalized_bleu}")
+    if verbose:
+        print(f"Penalized BLEU Score: {penalized_bleu}")
 
     return penalized_bleu
 
@@ -229,7 +232,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=32)
     args = parser.parse_args()
     return args
@@ -241,8 +244,8 @@ def finetune_paraphrase_generation(args):
     model.to(device)
     tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
 
-    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
-    dev_dataset = pd.read_csv("data/etpc-paraphrase-dev.csv", sep="\t")
+    train_dataset = pd.read_csv("data/etpc-paraphrase-train-split.csv", sep="\t")
+    dev_dataset = pd.read_csv("data/etpc-paraphrase-dev-split.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-generation-test-student.csv", sep="\t")
 
     # You might do a split of the train data into train/validation set here
@@ -254,7 +257,7 @@ def finetune_paraphrase_generation(args):
 
     print(f"Loaded {len(train_dataset)} training samples.")
 
-    model = train_model(model, train_data, dev_dataset, args, device, tokenizer)
+    model = train_model(model, train_data, train_dataset, dev_dataset, args, device, tokenizer)
 
     print("Training finished.")
 
