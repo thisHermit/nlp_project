@@ -23,14 +23,114 @@
 
 > Following the setup instructions for the different tasks:
 
-### Paraphrase type Detection
+### Paraphrase Type Detection
+
+#### Setup
+
+The model was trained and evaluated on the [Grete cluster provided by GWDG](https://gwdg.de/hpc/systems/grete/) on a single H100. To reproduce the experiments, the following command requests a H100 for 2 hours, which are sufficient to run each experiment independently.
+
+```bash
+srun -p grete-h100 --pty -n 1 -c 64 -G H100:1 --time 1:00:00 bash
+```
+
+<details>
+<summary>Command to request resources for <code>&lt;hours&gt;</code> amount of time.</summary>
+
+```bash
+srun -p grete-h100 --pty -n 1 -c 64 -G H100:1 --time <hours>:00:00 bash
+```
+
+To run all experiments for Paraphrase Type Detection, 6 hours should be more than sufficient.
+
+More details on the [srun options can be found here](https://slurm.schedmd.com/srun.html).
+
+</details>
+
+#### Reproducing experiments
 
 To run any of the experiments, switch to the corresponding branch and then run the detection script `bart_detection.py`.
 
+Please note that the branch named ptd-exp1 is actually the baseline model branch with the latest commits changes merged in and not the first experiment and so the count in the branch names is off by one.
+
 ```bash
-git co ptd-exp1 # switch to an experiment branch
+git co ptd-exp2 # switch to an experiment branch
 conda activate dnlp # activate the conda environment
 python3 bart_detection.py --use_gpu # run the experiment
+```
+
+<details>
+
+<summary>bash commands to run each experiment</summary>
+
+#### Experiment 1
+
+```bash
+git co ptd-exp2
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+#### Experiment 2
+
+```bash
+git co ptd-exp3
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+#### Experiment 3
+
+```bash
+git co ptd-exp4
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+#### Experiment 4
+
+```bash
+git co ptd-exp5
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+#### Experiment 5
+
+```bash
+git co ptd-exp6
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+#### Experiment 6
+
+```bash
+git co ptd-exp7
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+#### Experiment 7
+
+```bash
+git co ptd-exp8
+conda activate dnlp
+python3 bart_detection.py --use_gpu
+```
+
+</details>
+
+### Paraphrase Type Generation
+
+```bash
+cd data
+wget -O train.parquet https://huggingface.co/datasets/google-research-datasets/paws/resolve/main/labeled_final/train-00000-of-00001.parquet
+```
+
+#### PAWS
+
+```
+TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu
 ```
 
 # Methodology
@@ -52,6 +152,7 @@ We implemented a "smart loss" function designed to weigh the importance of harde
 We introduced a Variational Autoencoder (VAE) into our paraphrase type detection pipeline to capture the latent distributions of paraphrase types more effectively. The VAE component allowed the model to generate paraphrase representations that maintain both diversity and coherence, leading to better generalization across different paraphrase types.
 
 ![mixed effects model](images/bart_vae.drawio.png)
+
 There are random effects that come from the decoder part of the VAE and fixed effects that directly come from the BART model. This combination allowed us to generate more nuanced paraphrase embeddings, enhancing the model's performance on unseen data.
 
 #### Focal Loss
