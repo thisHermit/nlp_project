@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 
 # Focal Loss 
+# implementation from https://pytorch.org/vision/main/_modules/torchvision/ops/focal_loss.html
 class FocalLoss(nn.Module):
     def __init__(self, gamma=2.0, alpha=None, reduction='mean'):
         """
@@ -49,6 +50,7 @@ class FocalLoss(nn.Module):
 
 
 # Dice Loss
+# implementation from https://discuss.pytorch.org/t/implementation-of-dice-loss/53552
 class DiceLoss(nn.Module):
     def __init__(self, smooth=1.0):
         """
