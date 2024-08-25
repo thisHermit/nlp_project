@@ -7,6 +7,7 @@ import sys
 import time
 from types import SimpleNamespace
 
+import csv
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -22,9 +23,6 @@ from datasets import (
 )
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
-
-from smart_regulization import smart_loss
-
 
 
 TQDM_DISABLE = False
@@ -50,6 +48,7 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
+EXP_NAME = "SMART+MNRL"
 
 
 class MultitaskBERT(nn.Module):
@@ -75,22 +74,15 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = False
             elif config.option == "finetune":
                 param.requires_grad = True
-        ### TODO
+
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Sequential(
-            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
-            nn.ReLU(),
-            nn.Linear(BERT_HIDDEN_SIZE, 1)
-        )
-        # raise NotImplementedError
-        # raise NotImplementedError
+
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
 
 
     def forward(self, input_ids, attention_mask):
         """Takes a batch of sentences and produces embeddings for them."""
-
         # The final BERT embedding is the hidden state of [CLS] token (the first token).
         # See BertModel.forward() for more details.
         # Here, you can start by just returning the embeddings straight from BERT.
@@ -99,8 +91,7 @@ class MultitaskBERT(nn.Module):
         bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         output_layer = bert_model['last_hidden_state'][:, 0, :]
         return output_layer
-        # ### TODO
-        # raise NotImplementedError
+
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -115,7 +106,6 @@ class MultitaskBERT(nn.Module):
         bert_output = self.forward(input_ids, attention_mask)
         sentiment_out = self.sentiment_linear(bert_output)
         return sentiment_out
-
 
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
@@ -138,6 +128,7 @@ class MultitaskBERT(nn.Module):
 
         return logit.squeeze(-1)
 
+
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         """
         Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
@@ -145,56 +136,48 @@ class MultitaskBERT(nn.Module):
         it will be handled as a logit by the appropriate loss function.
         Dataset: STS
         """
+        # Get both Embeddings
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-
-        # Compute cosine similarity
+        
+        # Compute cosine similarity between both sentence embeddings
         cos_sim = F.cosine_similarity(output_1, output_2)
-        scaled_sim = (cos_sim + 1) * 2.5
-        return scaled_sim
 
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
 
+    def eval_fn(self,perturbed_embeddings_1,perturbed_embeddings_2):
+        # Compute cosine similarity between both sentence embeddings
+        cos_sim = F.cosine_similarity(perturbed_embeddings_1, perturbed_embeddings_2)
 
-############# TESTING SMARTTTTTT
-
-    def predict_similarity_SMART(self, output_1, output_2):
-        cos_sim = F.cosine_similarity(output_1, output_2)
-        scaled_sim = (cos_sim + 1) * 2.5
-        # combined_output = torch.cat([output_1, output_2], dim=1)
-        # similarity_score = self.sts_head(combined_output).squeeze(1)
-        return scaled_sim
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
     
     def get_embeddings(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        return output_1,output_2
+        
+        return output_1,output_2#    
 
     def compute_multiple_negatives_ranking_loss(self, embeddings_1, embeddings_2):
-        """
-        Computes the MultipleNegativesRankingLoss.
-        
-        embeddings_1: Tensor of shape (batch_size, embedding_dim) - First set of embeddings
-        embeddings_2: Tensor of shape (batch_size, embedding_dim) - Second set of embeddings
-        
-        Returns:
-        loss: Computed loss value
-        """
         # Normalize the embeddings to unit vectors
         embeddings_1 = F.normalize(embeddings_1, p=2, dim=1)
         embeddings_2 = F.normalize(embeddings_2, p=2, dim=1)
 
         # Compute cosine similarity matrix between the two sets of embeddings
-        similarity_matrix = torch.matmul(embeddings_1, embeddings_2.T)
+        sim_mat = torch.matmul(embeddings_1, embeddings_2.T)
 
         # Apply softmax to similarity matrix (to ensure it's positive)
-        similarity_matrix = similarity_matrix * 20.0  # Optional scaling factor (as in the original repo)
-        labels = torch.arange(similarity_matrix.size(0)).to(embeddings_1.device)
+        sim_mat = sim_mat * 20.0  # Optional scaling factor (as in the original repo)
+        labels = torch.arange(sim_mat.size(0)).to(embeddings_1.device)
 
         # Compute the cross-entropy loss
-        loss = F.cross_entropy(similarity_matrix, labels)
+        loss = F.cross_entropy(sim_mat, labels)
 
         return loss
-
+    
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
     ):
@@ -210,6 +193,26 @@ class MultitaskBERT(nn.Module):
         ### TODO
         raise NotImplementedError
 
+def inf_norm(x):
+    return torch.norm(x, p=2, dim=-1, keepdim=True)
+
+def smart_loss(model, embeddings_1,embeddings_2, logits, epsilon=1e-3):
+    # Generate perturbed embeddings
+    embed_norm_1= inf_norm(embeddings_1 )
+    noise_1 = torch.randn_like(embeddings_1) * epsilon * embed_norm_1
+    perturbed_embeddings_1 = embeddings_1 + noise_1
+
+    embed_norm_2 = inf_norm(embeddings_2)
+    noise_2 = torch.randn_like(embeddings_2) * epsilon * embed_norm_2
+    perturbed_embeddings_2 = embeddings_2 + noise_2
+
+    # Get predictions for perturbed embeddings
+    perturbed_logits = model.eval_fn(perturbed_embeddings_1,perturbed_embeddings_2)
+
+    # Compute KL divergence
+    kl_div = nn.KLDivLoss(reduction="batchmean")
+
+    return kl_div(F.log_softmax(perturbed_logits, dim=-1), F.softmax(logits, dim=-1))
 
 def save_model(model, optimizer, args, config, filepath):
     # ---------------------------------------------------
@@ -404,11 +407,11 @@ def train_multitask(args):
 
                 # Get embeddings from the model for SMART loss computation
                 embeddings_1,embeddings_2 = model.get_embeddings(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-                s_loss = smart_loss(model , embeddings_1, embeddings_2, labels)
+                s_loss = smart_loss(model , embeddings_1, embeddings_2, logits)
 
                 # mnrl loss
                 ranking_loss = model.compute_multiple_negatives_ranking_loss(embeddings_1,embeddings_2)
-                loss = ranking_loss + s_loss + mse_loss
+                loss = ranking_loss + 0.02 * s_loss + mse_loss
 
                 # Backpropagation and optimization step
                 loss.backward()
@@ -492,6 +495,18 @@ def train_multitask(args):
         print(
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
+        
+        filename = 'results.csv'
+        file_exists = os.path.isfile(filename)
+        # Open the CSV file in append mode
+        with open(filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            
+            # If file does not exist, write the header
+            if not file_exists:
+                writer.writerow(['exp', 'epoch_num', 'loss','train_corr','dev_corr'])
+            
+            writer.writerow([EXP_NAME, epoch+1, train_loss,train_acc,dev_acc])
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
