@@ -7,6 +7,7 @@ import sys
 import time
 from types import SimpleNamespace
 
+import csv
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -47,6 +48,7 @@ def seed_everything(seed=11711):
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 LATENT_DIMS = 6
+EXP_NAME = "VAE_6"
 
 class MultitaskBERT(nn.Module):
     """
@@ -74,15 +76,12 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        # self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
+
+        # VAE layers
         self.fc_mu = nn.Linear(BERT_HIDDEN_SIZE, LATENT_DIMS) # Linear layer for mu
         self.fc_logvar = nn.Linear(BERT_HIDDEN_SIZE, LATENT_DIMS) # Linear layer for log variance
         self.fc_z = nn.Linear(LATENT_DIMS, BERT_HIDDEN_SIZE)
-        # self.sts_head = nn.Linear(BERT_HIDDEN_SIZE*2, 1)
 
-
-        # raise NotImplementedError
-        # raise NotImplementedError
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
 
     def reparameterize(self, mu, logvar):
@@ -90,8 +89,19 @@ class MultitaskBERT(nn.Module):
         eps = torch.randn_like(std)
         return mu + eps*std
 
-
     def forward(self, input_ids, attention_mask):
+        """Takes a batch of sentences and produces embeddings for them."""
+
+        # The final BERT embedding is the hidden state of [CLS] token (the first token).
+        # See BertModel.forward() for more details.
+        # Here, you can start by just returning the embeddings straight from BERT.
+        # When thinking of improvements, you can later try modifying this
+        # (e.g., by adding other layers).
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        output_layer = bert_model['last_hidden_state'][:, 0, :]
+        return output_layer
+    
+    def forward_vae(self, input_ids, attention_mask):
         """Takes a batch of sentences and produces embeddings for them."""
 
         # The final BERT embedding is the hidden state of [CLS] token (the first token).
@@ -156,18 +166,17 @@ class MultitaskBERT(nn.Module):
         Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
         Since the similarity label is a number in the interval [0,5], your output should be normalized to the interval [0,5];
         it will be handled as a logit by the appropriate loss function.
-        Dataset: STS
         """
-        # print(input_ids_1)
+        # Get both Embeddings
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-
-        # Compute cosine similarity
+        
+        # Compute cosine similarity between both sentence embeddings
         cos_sim = F.cosine_similarity(output_1, output_2)
-        scaled_sim = (cos_sim + 1) * 2.5
-        return scaled_sim
-        # ### TODO
-        # raise NotImplementedError
+
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -453,6 +462,18 @@ def train_multitask(args):
         print(
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
+
+        filename = 'results.csv'
+        file_exists = os.path.isfile(filename)
+        # Open the CSV file in append mode
+        with open(filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            
+            # If file does not exist, write the header
+            if not file_exists:
+                writer.writerow(['exp', 'epoch_num', 'loss','train_corr','dev_corr'])
+            
+            writer.writerow([EXP_NAME, epoch+1, train_loss,train_acc,dev_acc])
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
