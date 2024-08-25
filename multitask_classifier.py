@@ -370,10 +370,15 @@ def train_multitask(args):
                 optimizer.zero_grad()
                 logits = model.predict_sentiment(b_ids, b_mask)
                 loss = F.cross_entropy(logits, b_labels.view(-1), label_smoothing=LABELSMOOTHING)
+                
+                # L1 loss
                 l1_norm = sum(p.abs().sum() for p in model.parameters())
                 loss = loss + L1_LAMBDAl * l1_norm
+                
+                # Gradient Clipping
                 if GradientClipping:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                
                 loss.backward()
                 optimizer.step()
 
