@@ -58,7 +58,7 @@ LABELSMOOTHING = 0.0
 # loss function
 # CrossEntropyLoss (cel), FocalLoss (fl), Hinge Loss (Multi-Class SVM) (hl),
 # Mean Squared Error (MSE) for Soft Labels (mse), Dice Loss (Soft Dice Loss) (dl).
-LOSS = "dl"
+LOSS = "fl"
 
 class MultitaskBERT(nn.Module):
     """
