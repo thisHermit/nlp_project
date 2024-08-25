@@ -300,6 +300,8 @@ def finetune_paraphrase_generation(args):
 
     print(f"Loaded {len(train_dataset)} training samples.")
 
+    print("Loading model pre-trained on PAWS...")
+    model.load_state_dict(torch.load('paws_bart_generation_model.ckpt'))
     model = train_model(model, train_data, train_dataset, dev_dataset, args, device, tokenizer)
 
     print("Training finished.")
