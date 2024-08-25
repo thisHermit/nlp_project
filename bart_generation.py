@@ -304,10 +304,13 @@ def finetune_paraphrase_generation(args):
 
     paws_train_loader = create_dataloader(paws_df, args)
     model = pre_train_model(model, paws_train_loader, paws_df, paws_val_data, args, device, tokenizer)
+    
+    print("Saving model trained on paws dataset...")
+    torch.save(model.state_dict(), 'paws_bart_generation_model.ckpt')
 
     # restore values
     args.epochs = saved_epochs
-    args.batch_size = args.saved_batch_size
+    args.batch_size = saved_batch_size
 
     train_data = transform_data(train_dataset, args)
     dev_data = transform_data(dev_dataset, args)
