@@ -12,7 +12,7 @@ from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
 from torch.optim.lr_scheduler import ExponentialLR
-
+import optuna
 
 TQDM_DISABLE = False
 
@@ -54,8 +54,10 @@ class EarlyStopping:
 
 
 class BartWithClassifier(nn.Module):
-    def __init__(self, latent_dims=7, num_labels=7):
+    def __init__(self, args, num_labels=7):
         super(BartWithClassifier, self).__init__()
+
+        latent_dims = args.latent_dims
 
         self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
         # self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
@@ -123,16 +125,7 @@ def transform_data(dataset, args, max_length=512):
     
     if 'paraphrase_types' in dataset.columns:
         labels = dataset['paraphrase_types'].apply(eval).tolist()
-        if args.multi_label:
-            lbc1 = dataset['sentence1_segment_location'].apply(eval).tolist()
-            lbc2 = dataset['sentence2_segment_location'].apply(eval).tolist()
-            joined_lbcs = [l1 + l2 for l1, l2 in zip(lbc1, lbc2)]
-            binary_labels = []
-            for label in joined_lbcs:
-                counter = Counter(label)
-                binary_labels.append([counter[i + 1] // min(counter.values()) for i in range(7)])
-        else:
-            binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
+        binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
         labels_tensor = torch.tensor(binary_labels, dtype=torch.float32)
         
         data = TensorDataset(input_ids, attention_mask, labels_tensor)
@@ -145,24 +138,12 @@ def transform_data(dataset, args, max_length=512):
 
 
 def train_model(model, train_data, dev_data, device, args, early_stopping=None):
-    """
-    Train the model. You can use any training loop you want. We recommend starting with
-    AdamW as your optimizer. You can take a look at the SST training loop for reference.
-    Think about your loss function and the number of epochs you want to train for.
-    You can also use the evaluate_model function to evaluate the
-    model on the dev set. Print the training loss, training accuracy, and dev accuracy at
-    the end of each epoch.
-
-    Return the trained model.
-    """
     model.train()
-    optimizer = AdamW(model.parameters(), lr=2e-5)
-    scheduler = ExponentialLR(optimizer, gamma=0.9)
-    criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
+    optimizer = AdamW(model.parameters(), lr=args.learning_rate)
+    scheduler = ExponentialLR(optimizer, gamma=args.scheduler_gamma)
+    criterion = nn.BCEWithLogitsLoss()
     
-    num_epochs = args.epochs
-
-    for epoch in range(num_epochs):
+    for epoch in range(args.epochs):
         total_loss = 0
         correct_predictions = 0
         total_predictions = 0
@@ -188,11 +169,12 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
         dev_accuracy, dev_matthews_coefficient = evaluate_model(model, dev_data, device)
         total_train_accuracy, total_train_matthews_coefficient = evaluate_model(model, train_data, device)
 
-        print(f"Epoch {epoch+1}/{num_epochs}")
+        print(f"Epoch {epoch+1}/{args.epochs}")
         print(f"Training step:\nLoss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
         print(f"Validation:\n Accuracy: {dev_accuracy} Matthews Coefficient: {dev_matthews_coefficient:.4f}")
         print(f"Total Train:\n Accuracy: {total_train_accuracy} Matthews Coefficient: {total_train_matthews_coefficient:.4f}")
         print()
+
         if early_stopping is not None:
             early_stopping(-dev_matthews_coefficient, model)
             if early_stopping.early_stop:
@@ -295,7 +277,13 @@ def get_args():
     parser.add_argument("--checkpoint_file", type=str, default="bart_model.ckpt")
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--multi_label", action="store_true")
+    parser.add_argument("--learning_rate", type=float, default=2e-5)
+    parser.add_argument("--scheduler_gamma", type=float, default=0.9)
+    parser.add_argument("--train_val_split_ratio", type=float, default=0.9)
+    parser.add_argument("--optuna_optim", action="store_true")
+    parser.add_argument("--n_trials", type=int, default=20)
+    parser.add_argument("--latent_dims", type=int, default=7)
+    parser.add_argument("--patience", type=int, default=4)
     args = parser.parse_args()
     return args
 
@@ -335,8 +323,89 @@ def finetune_paraphrase_detection(args):
         "predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False, sep="\t"
     )
 
+def optuna_objective(trial):
+    args.epochs = trial.suggest_int("epochs", 3, 40)
+    args.learning_rate = trial.suggest_loguniform("learning_rate", 1e-7, 1e-5)
+    args.scheduler_gamma = trial.suggest_uniform("scheduler_gamma", 0.8, 0.99)
+    args.latent_dims = trial.suggest_int("latent_dims", 4, 14)
+    args.patience = trial.suggest_int("patience", 2, 8)
+
+    model = BartWithClassifier(args)
+    device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
+    model.to(device)
+
+    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
+
+    train_val_split = int(args.train_val_split_ratio * len(train_dataset))
+    train_data = train_dataset.iloc[:train_val_split]
+    val_data = train_dataset.iloc[train_val_split:]
+
+    train_dataloader = transform_data(train_data, args)
+    val_dataloader = transform_data(val_data, args)
+
+    early_stopping = EarlyStopping(args.checkpoint_file, patience=args.patience)
+    
+    model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
+
+    model.load_state_dict(torch.load(args.checkpoint_file))
+    _, matthews_corr = evaluate_model(model, val_dataloader, device)
+    return matthews_corr
+
+def optuna_search(args):
+    study = optuna.create_study(direction="maximize")
+    study.optimize(optuna_objective, n_trials=args.n_trials)
+
+    print("Best trial:")
+    trial = study.best_trial
+    print(f"  Value: {trial.value}")
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print(f"    {key}: {value}")
+
+    # Use the best hyperparameters for final training
+    for key, value in trial.params.items():
+        setattr(args, key, value)
+    
+    finetune_paraphrase_detection(args)
+
+def finetune_paraphrase_detection(args):
+    model = BartWithClassifier(args)
+    device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
+    model.to(device)
+
+    train_dataset = pd.read_csv("data/etpc-paraphrase-train.csv", sep="\t")
+    test_dataset = pd.read_csv("data/etpc-paraphrase-detection-test-student.csv", sep="\t")
+
+    train_val_split = int(args.train_val_split_ratio * len(train_dataset))
+    train_data = train_dataset.iloc[:train_val_split]
+    val_data = train_dataset.iloc[train_val_split:]
+
+    train_dataloader = transform_data(train_data, args)
+    val_dataloader = transform_data(val_data, args)
+    test_dataloader = transform_data(test_dataset, args)
+
+    print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
+
+    early_stopping = EarlyStopping(args.checkpoint_file, patience=args.patience)
+    model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
+
+    print(f"Training finished. Saved model at {args.checkpoint_file}")
+
+    model.load_state_dict(torch.load(args.checkpoint_file))
+    accuracy, matthews_corr = evaluate_model(model, val_dataloader, device)
+    print(f"The accuracy of the model is: {accuracy:.3f}")
+    print(f"Matthews Correlation Coefficient of the model is: {matthews_corr:.3f}")
+
+    test_ids = test_dataset["id"]
+    test_results = test_model(model, test_dataloader, test_ids, device)
+    test_results.to_csv(
+        "predictions/bart/etpc-paraphrase-detection-test-output.csv", index=False, sep="\t"
+    )
 
 if __name__ == "__main__":
     args = get_args()
     seed_everything(args.seed)
-    finetune_paraphrase_detection(args)
+    if args.optuna_optim:
+        optuna_search(args)
+    else:
+        finetune_paraphrase_detection(args)
