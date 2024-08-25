@@ -241,7 +241,7 @@ class SentencePairTestDataset(Dataset):
         return batched_data
 
 
-def load_multitask_data(sst_filename, quora_filename, sts_filename, etpc_filename, split="train"):
+def load_multitask_data(sst_filename, quora_filename, sts_filename, etpc_filename, imdb_filename, split="train"):
     sst_data = []
     num_labels = {}
     if split == "test":
@@ -261,6 +261,26 @@ def load_multitask_data(sst_filename, quora_filename, sts_filename, etpc_filenam
                 sst_data.append((sent, label, sent_id))
 
     print(f"Loaded {len(sst_data)} {split} examples from {sst_filename}")
+
+    imdb_data = []
+    num_labels = {}
+    if split == "test":
+        with open(imdb_filename, "r", encoding="utf-8") as fp:
+            for record in csv.DictReader(fp, delimiter="\t"):
+                sent = record["sentence"].lower().strip()
+                sent_id = record["id"].lower().strip()
+                imdb_data.append((sent, sent_id))
+    else:
+        with open(imdb_filename, "r", encoding="utf-8") as fp:
+            for record in csv.DictReader(fp, delimiter="\t"):
+                sent = record["sentence"].lower().strip()
+                sent_id = record["id"].lower().strip()
+                label = int(record["sentiment"].strip())
+                if label not in num_labels:
+                    num_labels[label] = len(num_labels)
+                imdb_data.append((sent, label, sent_id))
+
+    print(f"Loaded {len(imdb_data)} {split} examples from {imdb_filename}")
 
     quora_data = []
     if split == "test":
@@ -351,4 +371,4 @@ def load_multitask_data(sst_filename, quora_filename, sts_filename, etpc_filenam
 
     print(f"Loaded {len(etpc_data)} {split} examples from {etpc_filename}")
 
-    return sst_data, num_labels, quora_data, sts_data, etpc_data
+    return sst_data, num_labels, quora_data, sts_data, etpc_data, imdb_data

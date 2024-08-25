@@ -22,7 +22,7 @@ def load_imdb_data(data_file):
     
     return df[['id', 'sentence', 'sentiment']]
 
-def split_and_save_data(df, train_file, dev_file, test_file, test_size=0.6, dev_size=0.1, random_state=42):
+def split_and_save_data(df, train_file, dev_file, test_file, test_size=0.3, dev_size=0.5, random_state=42):
     """
     Splits the data into training, development (dev), and test sets and saves them to CSV files.
 
@@ -45,7 +45,7 @@ def split_and_save_data(df, train_file, dev_file, test_file, test_size=0.6, dev_
 
 if __name__ == "__main__":
 
-    data_file = "/user/ahmed.assy/u11454/nlp_project-main/imdb-data/IMDB Dataset.csv"  # Update this path with the correct location
+    data_file = "/user/ahmed.assy/u11454/datasets/imdb_data.csv"  # Update this path with the correct location
     train_file = "data/IMDB_train_data.csv"
     dev_file = "data/IMDB_dev_data.csv"
     test_file = "data/IMDB_test_data.csv"
