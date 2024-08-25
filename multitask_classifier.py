@@ -22,6 +22,7 @@ from datasets import (
 )
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
+from losses import FocalLoss, DiceLoss
 
 TQDM_DISABLE = False
 
@@ -47,11 +48,17 @@ def seed_everything(seed=11711):
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 DROPOUT = 0.0
-WEIGHTDECAY = 0.05
+WEIGHTDECAY = 0.0
 BATCHNORM = False
 L1_LAMBDAl = 0
 GradientClipping = False
 LABELSMOOTHING = 0.0
+
+
+# loss function
+# CrossEntropyLoss (cel), FocalLoss (fl), Hinge Loss (Multi-Class SVM) (hl),
+# Mean Squared Error (MSE) for Soft Labels (mse), Dice Loss (Soft Dice Loss) (dl).
+LOSS = "dl"
 
 class MultitaskBERT(nn.Module):
     """
@@ -369,11 +376,30 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
                 logits = model.predict_sentiment(b_ids, b_mask)
-                loss = F.cross_entropy(logits, b_labels.view(-1), label_smoothing=LABELSMOOTHING)
+                
+                # choose the loss function
+                if LOSS == "cel":
+                    loss = F.cross_entropy(logits, b_labels.view(-1), label_smoothing=LABELSMOOTHING)
+                if LOSS == 'fl':
+                    loss = FocalLoss(gamma=2.0)(logits, b_labels.view(-1))
+                if LOSS == 'hl':
+                    loss = nn.MultiMarginLoss()(logits, b_labels.view(-1))
+                if LOSS == "mse":
+                    smoothed_labels = (1 - LABELSMOOTHING) * F.one_hot(b_labels, num_classes=N_SENTIMENT_CLASSES) + LABELSMOOTHING / N_SENTIMENT_CLASSES
+                    loss = F.mse_loss(F.softmax(logits, dim=-1), smoothed_labels)
+                if LOSS == "dl":
+                    loss_fn = DiceLoss()
+                    targets = F.one_hot(b_labels, num_classes=N_SENTIMENT_CLASSES)
+                    loss = loss_fn(logits, targets)
+                
+                # L1 loss
                 l1_norm = sum(p.abs().sum() for p in model.parameters())
                 loss = loss + L1_LAMBDAl * l1_norm
+                
+                # Gradient Clipping
                 if GradientClipping:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                
                 loss.backward()
                 optimizer.step()
 
@@ -682,8 +708,8 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
+    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{LOSS}-{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
-    # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.05-sst.pt-->52.9%"
+    # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.0-focal-sst.pt-->53%"
     test_model(args)
