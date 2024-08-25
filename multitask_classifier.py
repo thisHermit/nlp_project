@@ -385,13 +385,13 @@ def train_multitask(args):
                 # get cosine sim
                 logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
                 mse_loss =  F.mse_loss(logits, labels.float())
-                
+
                 # Get embeddings from the model for SMART loss computation
                 embeddings_1,embeddings_2 = model.get_embeddings(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
 
                 # computer smart_loss
                 smart_l = smart_loss(model , embeddings_1, embeddings_2, logits)
-                loss = mse_loss + 0.5 * smart_l
+                loss = mse_loss + 0.02 * smart_l
                 
                 # Backpropagation and optimization step
                 loss.backward()
