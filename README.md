@@ -54,12 +54,10 @@ More details on the [srun options can be found here](https://slurm.schedmd.com/s
 
 #### Reproducing experiments
 
-To run any of the experiments, switch to the corresponding branch and then run the detection script `bart_detection.py`.
-
-Please note that the branch named ptd-exp1 is actually the baseline model branch with the latest commits changes merged in and not the first experiment and so the count in the branch names is off by one.
+To run any of the experiments, you switch to the corresponding experiment branch and then run the detection script `bart_detection.py`. The general command structure looks like:
 
 ```bash
-git checkout ptd-exp2 # switch to an experiment branch
+git checkout ptd-exp<x> # here <x> is a branch number
 conda activate dnlp # activate the conda environment
 python3 bart_detection.py --use_gpu # run the experiment
 ```
@@ -121,8 +119,13 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp8
 conda activate dnlp
-python3 bart_detection.py --use_gpu --optimu_finefsdfsdfzxcvsfsd
+python3 bart_detection.py --use_gpu --optuna_optim
 ```
+
+<details>
+<summary><i>Off by one counter error for branch names</i></summary>
+Please note that the branch named ptd-exp1 is actually the baseline model branch with the latest commits changes merged in and not the first experiment and so the count in the branch names is off by one.
+</details>
 
 </details>
 
@@ -140,6 +143,8 @@ wget -O train.parquet https://huggingface.co/datasets/google-research-datasets/p
 ```
 TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu
 ```
+
+Running this commands generates a checkpoint file which saves the model after pre-training on the paws dataset. The model is saved in the file `paws_bart_generation_model.ckpt`.
 
 # Methodology
 
