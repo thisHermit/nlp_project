@@ -46,7 +46,12 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-DROPOUT = 0.4 
+DROPOUT = 0.0
+WEIGHTDECAY = 0.05
+BATCHNORM = False
+L1_LAMBDAl = 0
+GradientClipping = False
+LABELSMOOTHING = 0.0
 
 class MultitaskBERT(nn.Module):
     """
@@ -79,6 +84,7 @@ class MultitaskBERT(nn.Module):
         # raise NotImplementedError
         # raise NotImplementedError
         self.dropout = nn.Dropout(p=DROPOUT)
+        self.batch_norm = nn.BatchNorm1d(BERT_HIDDEN_SIZE) 
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
         self.biary_sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, 2)
 
@@ -108,7 +114,9 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # raise NotImplementedError
         bert_output = self.forward(input_ids, attention_mask)
-        bert_output = self.dropout(bert_output) 
+        bert_output = self.dropout(bert_output)
+        if BATCHNORM: 
+            bert_output = self.batch_norm(bert_output)
         sentiment_out = self.sentiment_linear(bert_output)
         return sentiment_out
 
@@ -329,19 +337,12 @@ def train_multitask(args):
     print(separator)
 
     
-    if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
-        saved = torch.load('/user/ahmed.assy/u11454/nlp_project/models/finetune-25-1e-05-tweets-61.6.pt')
-        config = saved["model_config"]
-        model = MultitaskBERT(config)
-        model.load_state_dict(saved["model"], strict=False)
-        model = model.to(device)
-        print(f"Loaded model to test from {'/user/ahmed.assy/u11454/nlp_project/models/finetune-25-1e-05-tweets-61.6.pt'}")
-    else:
-        model = MultitaskBERT(config)
-        model = model.to(device)
+    
+    model = MultitaskBERT(config)
+    model = model.to(device)
 
     lr = args.lr
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=WEIGHTDECAY)
     best_dev_acc = float("-inf")
 
     # Run for the specified number of epochs
@@ -368,7 +369,11 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
                 logits = model.predict_sentiment(b_ids, b_mask)
-                loss = F.cross_entropy(logits, b_labels.view(-1))
+                loss = F.cross_entropy(logits, b_labels.view(-1), label_smoothing=LABELSMOOTHING)
+                l1_norm = sum(p.abs().sum() for p in model.parameters())
+                loss = loss + L1_LAMBDAl * l1_norm
+                if GradientClipping:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 loss.backward()
                 optimizer.step()
 
@@ -514,14 +519,17 @@ def train_multitask(args):
             save_model(model, optimizer, args, config, args.filepath)
 
 
-def test_model(args):
+def test_model(args, filepath = None):
     with torch.no_grad():
         device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
-        saved = torch.load(args.filepath)
+        if filepath != None:
+            saved = torch.load(filepath)
+        else:
+            saved = torch.load(args.filepath)
         config = saved["model_config"]
 
         model = MultitaskBERT(config)
-        model.load_state_dict(saved["model"])
+        model.load_state_dict(saved["model"], strict=False)
         model = model.to(device)
         print(f"Loaded model to test from {args.filepath}")
 
@@ -674,7 +682,8 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{args.task}.pt"  # save path
+    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
+    # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.05-sst.pt-->52.9%"
     test_model(args)
