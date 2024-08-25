@@ -12,7 +12,6 @@ from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
 from torch.optim.lr_scheduler import ExponentialLR
-from smart_pytorch import SMARTLoss
 import torch.nn.functional as F
 
 
@@ -191,7 +190,6 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     optimizer = AdamW(model.parameters(), lr=2e-5)
     scheduler = ExponentialLR(optimizer, gamma=0.9)
     criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
-    #regularizer = SMARTLoss(eval_fn = model.eval, loss_fn = criterion)
     
     num_epochs = args.epochs
 
