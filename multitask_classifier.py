@@ -7,6 +7,7 @@ import sys
 import time
 from types import SimpleNamespace
 
+import csv
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -46,7 +47,7 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-
+EXP_NAME = "MNRL"
 
 class MultitaskBERT(nn.Module):
     """
@@ -74,8 +75,6 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        # self.sts_head = nn.Linear(BERT_HIDDEN_SIZE , 1)
-        # Define the ranking loss
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
         
         
@@ -136,94 +135,35 @@ class MultitaskBERT(nn.Module):
         Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
         Since the similarity label is a number in the interval [0,5], your output should be normalized to the interval [0,5];
         it will be handled as a logit by the appropriate loss function.
-        Dataset: STS
         """
+        # Get both Embeddings
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
         
-        # Compute cosine similarity
+        # Compute cosine similarity between both sentence embeddings
         cos_sim = F.cosine_similarity(output_1, output_2)
-        scaled_sim = (cos_sim + 1) * 2.5
-        return scaled_sim
+
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
 
     def compute_multiple_negatives_ranking_loss(self, embeddings_1, embeddings_2):
-        """
-        Computes the MultipleNegativesRankingLoss.
-        
-        embeddings_1: Tensor of shape (batch_size, embedding_dim) - First set of embeddings
-        embeddings_2: Tensor of shape (batch_size, embedding_dim) - Second set of embeddings
-        
-        Returns:
-        loss: Computed loss value
-        """
         # Normalize the embeddings to unit vectors
         embeddings_1 = F.normalize(embeddings_1, p=2, dim=1)
         embeddings_2 = F.normalize(embeddings_2, p=2, dim=1)
 
         # Compute cosine similarity matrix between the two sets of embeddings
-        similarity_matrix = torch.matmul(embeddings_1, embeddings_2.T)
+        sim_mat = torch.matmul(embeddings_1, embeddings_2.T)
 
         # Apply softmax to similarity matrix (to ensure it's positive)
-        similarity_matrix = similarity_matrix * 20.0  # Optional scaling factor (as in the original repo)
-        labels = torch.arange(similarity_matrix.size(0)).to(embeddings_1.device)
+        sim_mat = sim_mat * 20.0  # Optional scaling factor (as in the original repo)
+        labels = torch.arange(sim_mat.size(0)).to(embeddings_1.device)
 
         # Compute the cross-entropy loss
-        loss = F.cross_entropy(similarity_matrix, labels)
+        loss = F.cross_entropy(sim_mat, labels)
 
         return loss
 
-
-
-    # def compute_multiple_negatives_ranking_loss(self, embeddings):
-    #     # Compute cosine similarity matrix
-    #     cos_sim = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=2)
-        
-    #     # Create labels: each embedding is its own positive
-    #     labels = torch.arange(cos_sim.size(0)).to(embeddings.device)
-
-    #     # Compute Cross-Entropy loss
-    #     loss = F.cross_entropy(cos_sim, labels)
-
-    #     return loss
-
-    # def compute_loss(self, anchor_embeds, positive_embeds, negative_embeds, temperature=0.07):
-    #     """Compute the Multiple Negative Ranking Loss."""
-    #     # Compute cosine similarities
-    #     anchor_positive_sim = F.cosine_similarity(anchor_embeds.unsqueeze(1), positive_embeds.unsqueeze(0), dim=2)
-    #     anchor_negative_sim = F.cosine_similarity(anchor_embeds.unsqueeze(1), negative_embeds.unsqueeze(0), dim=2)
-
-    #     # Scale similarities
-    #     positive_scores = anchor_positive_sim / temperature
-    #     negative_scores = anchor_negative_sim / temperature
-
-    #     # Create labels for cross-entropy loss
-    #     labels = torch.zeros(anchor_embeds.size(0), dtype=torch.long, device=anchor_embeds.device)
-        
-    #     # Concatenate positive and negative scores for loss calculation
-    #     combined_scores = torch.cat([positive_scores, negative_scores], dim=1)
-        
-    #     # Compute loss
-    #     loss = F.cross_entropy(combined_scores, labels)
-    #     return loss
-
-    # def get_negative_samples(self, positive_embeddings, all_embeddings):
-    #     """Sample negative embeddings from all embeddings excluding the positive ones."""
-    #     positive_indices = torch.arange(positive_embeddings.size(0))
-    #     all_embeddings = all_embeddings.clone()
-
-    #     # To avoid self-pairing, mask out positive embeddings
-    #     mask = torch.ones(all_embeddings.size(0), dtype=torch.bool)
-    #     mask[positive_indices] = False
-
-    #     all_embeddings = all_embeddings[mask]
-
-    #     negative_samples = []
-    #     for pos_embed in positive_embeddings:
-    #         # Randomly sample from remaining negative samples
-    #         neg_embed = all_embeddings[torch.randint(0, all_embeddings.size(0), (1,))]
-    #         negative_samples.append(neg_embed)
-
-    #     return torch.cat(negative_samples)
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -432,12 +372,10 @@ def train_multitask(args):
                 output_2 = model.forward(input_ids_2, attention_mask_2)
 
                 # Compute loss using MultipleNegativesRankingLoss
-                # embeddings = torch.cat((output_1, output_2), 0)
-
                 logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
                 mse_loss = F.mse_loss(logits, labels.float())
                 ranking_loss = model.compute_multiple_negatives_ranking_loss(output_1,output_2)
-                loss = ranking_loss + 1 * mse_loss
+                loss =   mse_loss + 1 * ranking_loss 
                 
                 
                 loss.backward()
@@ -519,6 +457,19 @@ def train_multitask(args):
         print(
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
+        
+        filename = 'results.csv'
+        file_exists = os.path.isfile(filename)
+        # Open the CSV file in append mode
+        with open(filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            
+            # If file does not exist, write the header
+            if not file_exists:
+                writer.writerow(['exp', 'epoch_num', 'loss','train_corr','dev_corr'])
+            
+            writer.writerow([EXP_NAME, epoch+1, train_loss,train_acc,dev_acc])
+
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
