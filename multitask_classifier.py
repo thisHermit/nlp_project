@@ -46,7 +46,7 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-
+DROPOUT = 0.4 
 
 class MultitaskBERT(nn.Module):
     """
@@ -78,6 +78,7 @@ class MultitaskBERT(nn.Module):
         
         # raise NotImplementedError
         # raise NotImplementedError
+        self.dropout = nn.Dropout(p=DROPOUT)
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
         self.biary_sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, 2)
 
@@ -107,6 +108,7 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # raise NotImplementedError
         bert_output = self.forward(input_ids, attention_mask)
+        bert_output = self.dropout(bert_output) 
         sentiment_out = self.sentiment_linear(bert_output)
         return sentiment_out
 
@@ -327,7 +329,7 @@ def train_multitask(args):
     print(separator)
 
     
-    if args.task == "sts" or args.task == "multitask" or args.task == "multi-sentiment":
+    if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
         saved = torch.load('/user/ahmed.assy/u11454/nlp_project/models/finetune-10-1e-05-dr-0.0-wd-0.0-imdb-93.8.pt')
         config = saved["model_config"]
         model = MultitaskBERT(config)
@@ -675,4 +677,4 @@ if __name__ == "__main__":
     args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
-    # test_model(args)
+    test_model(args)
