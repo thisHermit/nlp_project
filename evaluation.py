@@ -33,7 +33,7 @@ TQDM_DISABLE = True
 
 # Perform model evaluation
 def model_eval_multitask(
-    sst_dataloader, quora_dataloader, sts_dataloader, etpc_dataloader, imdb_dataloader, model, device, task
+    sst_dataloader, quora_dataloader, sts_dataloader, etpc_dataloader, tweets_dataloader, model, device, task
 ):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
@@ -137,13 +137,13 @@ def model_eval_multitask(
         else:
             sst_accuracy = None
         
-        imdb_y_true = []
-        imdb_y_pred = []
-        imdb_sent_ids = []
+        tweets_y_true = []
+        tweets_y_pred = []
+        tweets_sent_ids = []
 
         # Evaluate sentiment classification.
-        if task == "imdb" or task == "multitask" or task == "multi-sentiment":
-            for step, batch in enumerate(tqdm(imdb_dataloader, desc="eval", disable=TQDM_DISABLE)):
+        if task == "tweets" or task == "multitask" or task == "multi-sentiment":
+            for step, batch in enumerate(tqdm(tweets_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_labels, b_sent_ids = (
                     batch["token_ids"],
                     batch["attention_mask"],
@@ -158,14 +158,14 @@ def model_eval_multitask(
                 y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
                 b_labels = b_labels.flatten().cpu().numpy()
 
-                imdb_y_pred.extend(y_hat)
-                imdb_y_true.extend(b_labels)
-                imdb_sent_ids.extend(b_sent_ids)
+                tweets_y_pred.extend(y_hat)
+                tweets_y_true.extend(b_labels)
+                tweets_sent_ids.extend(b_sent_ids)
 
-        if task == "imdb" or task == "multitask" or task == "multi-sentiment":
-            imdb_accuracy = np.mean(np.array(imdb_y_pred) == np.array(imdb_y_true))
+        if task == "tweets" or task == "multitask" or task == "multi-sentiment":
+            tweets_accuracy = np.mean(np.array(tweets_y_pred) == np.array(tweets_y_true))
         else:
-            imdb_accuracy = None
+            tweets_accuracy = None
 
         etpc_y_true = []
         etpc_y_pred = []
@@ -209,8 +209,8 @@ def model_eval_multitask(
             print(f"Paraphrase detection accuracy: {quora_accuracy:.3f}")
         if task == "sst" or task == "multitask":
             print(f"Sentiment classification accuracy: {sst_accuracy:.3f}")
-        if task == "imdb" or task == "multitask":
-            print(f"Sentiment classification accuracy: {imdb_accuracy:.3f}")
+        if task == "tweets" or task == "multitask":
+            print(f"Sentiment classification accuracy: {tweets_accuracy:.3f}")
         if task == "sts" or task == "multitask":
             print(f"Semantic Textual Similarity correlation: {sts_corr:.3f}")
         if task == "etpc" or task == "multitask":
@@ -225,9 +225,9 @@ def model_eval_multitask(
         sst_accuracy,
         sst_y_pred,
         sst_sent_ids,
-        imdb_accuracy,
-        imdb_y_pred,
-        imdb_sent_ids,
+        tweets_accuracy,
+        tweets_y_pred,
+        tweets_sent_ids,
         sts_corr,
         sts_y_pred,
         sts_sent_ids,
@@ -239,7 +239,7 @@ def model_eval_multitask(
 
 # Perform model evaluation in terms by averaging accuracies across tasks.
 def model_eval_test_multitask(
-    sst_dataloader, quora_dataloader, sts_dataloader, etpc_dataloader, imdb_dataloader, model, device, task
+    sst_dataloader, quora_dataloader, sts_dataloader, etpc_dataloader, tweets_dataloader, model, device, task
 ):
     model.eval()  # switch to eval model, will turn off randomness like dropout
 
@@ -314,12 +314,12 @@ def model_eval_test_multitask(
                 sst_y_pred.extend(y_hat)
                 sst_sent_ids.extend(b_sent_ids)
         
-        imdb_y_pred = []
-        imdb_sent_ids = []
+        tweets_y_pred = []
+        tweets_sent_ids = []
 
         # Evaluate sentiment classification.
-        if task == "imdb" or task == "multitask" or task == "multi-sentiment":
-            for step, batch in enumerate(tqdm(imdb_dataloader, desc="eval", disable=TQDM_DISABLE)):
+        if task == "tweets" or task == "multitask" or task == "multi-sentiment":
+            for step, batch in enumerate(tqdm(tweets_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 if (step%20 == 0):
                     print(step)
                 b_ids, b_mask, b_sent_ids = (
@@ -334,8 +334,8 @@ def model_eval_test_multitask(
                 logits = model.predict_sentiment(b_ids, b_mask)
                 y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
 
-                imdb_y_pred.extend(y_hat)
-                imdb_sent_ids.extend(b_sent_ids)
+                tweets_y_pred.extend(y_hat)
+                tweets_sent_ids.extend(b_sent_ids)
 
         etpc_y_pred = []
         etpc_sent_ids = []
@@ -365,8 +365,8 @@ def model_eval_test_multitask(
             quora_sent_ids,
             sst_y_pred,
             sst_sent_ids,
-            imdb_y_pred,
-            imdb_sent_ids,
+            tweets_y_pred,
+            tweets_sent_ids,
             sts_y_pred,
             sts_sent_ids,
             etpc_y_pred,
@@ -375,12 +375,12 @@ def model_eval_test_multitask(
 
 
 def test_model_multitask(args, model, device):
-    sst_test_data, _, quora_test_data, sts_test_data, etpc_test_data, imdb_test_data = load_multitask_data(
-        args.sst_test, args.quora_test, args.sts_test, args.etpc_test, args.imdb_test, split="test"
+    sst_test_data, _, quora_test_data, sts_test_data, etpc_test_data, tweets_test_data = load_multitask_data(
+        args.sst_test, args.quora_test, args.sts_test, args.etpc_test, args.tweets_test, split="test"
     )
 
-    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data, imdb_dev_data = load_multitask_data(
-        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, args.imdb_dev, split="dev"
+    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data, tweets_dev_data = load_multitask_data(
+        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, args.tweets_dev, split="dev"
     )
 
     sst_test_data = SentenceClassificationTestDataset(sst_test_data, args)
@@ -393,14 +393,14 @@ def test_model_multitask(args, model, device):
         sst_dev_data, shuffle=False, batch_size=args.batch_size, collate_fn=sst_dev_data.collate_fn
     )
     
-    imdb_test_data = SentenceClassificationTestDataset(imdb_test_data, args)
-    imdb_dev_data = SentenceClassificationDataset(imdb_dev_data, args)
+    tweets_test_data = SentenceClassificationTestDataset(tweets_test_data, args)
+    tweets_dev_data = SentenceClassificationDataset(tweets_dev_data, args)
 
-    imdb_test_dataloader = DataLoader(
-        imdb_test_data, shuffle=True, batch_size=args.batch_size, collate_fn=imdb_test_data.collate_fn
+    tweets_test_dataloader = DataLoader(
+        tweets_test_data, shuffle=True, batch_size=args.batch_size, collate_fn=tweets_test_data.collate_fn
     )
-    imdb_dev_dataloader = DataLoader(
-        imdb_dev_data, shuffle=False, batch_size=args.batch_size, collate_fn=imdb_dev_data.collate_fn
+    tweets_dev_dataloader = DataLoader(
+        tweets_dev_data, shuffle=False, batch_size=args.batch_size, collate_fn=tweets_dev_data.collate_fn
     )
 
     quora_test_data = SentencePairTestDataset(quora_test_data, args)
@@ -454,9 +454,9 @@ def test_model_multitask(args, model, device):
         dev_sst_accuracy,
         dev_sst_y_pred,
         dev_sst_sent_ids,
-        dev_imdb_accuracy,
-        dev_imdb_y_pred,
-        dev_imdb_sent_ids,
+        dev_tweets_accuracy,
+        dev_tweets_y_pred,
+        dev_tweets_sent_ids,
         dev_sts_corr,
         dev_sts_y_pred,
         dev_sts_sent_ids,
@@ -468,7 +468,7 @@ def test_model_multitask(args, model, device):
         quora_dev_dataloader,
         sts_dev_dataloader,
         etpc_dev_dataloader,
-        imdb_dev_dataloader,
+        tweets_dev_dataloader,
         model,
         device,
         task,
@@ -479,8 +479,8 @@ def test_model_multitask(args, model, device):
         test_quora_sent_ids,
         test_sst_y_pred,
         test_sst_sent_ids,
-        test_imdb_y_pred,
-        test_imdb_sent_ids,
+        test_tweets_y_pred,
+        test_tweets_sent_ids,
         test_sts_y_pred,
         test_sts_sent_ids,
         test_etpc_y_pred,
@@ -490,7 +490,7 @@ def test_model_multitask(args, model, device):
         quora_test_dataloader,
         sts_test_dataloader,
         etpc_test_dataloader,
-        imdb_test_dataloader,
+        tweets_test_dataloader,
         model,
         device,
         task,
@@ -508,17 +508,17 @@ def test_model_multitask(args, model, device):
             for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
                 f.write(f"{p}\t{s}\n")
     
-    if task == "imdb" or task == "multitask" or task == "multi-sentiment":
-        with open(args.imdb_dev_out, "w+") as f:
-            print(f"dev sentiment acc :: {dev_imdb_accuracy :.3f}")
-            f.write("id,Predicted_Sentiment\n")
-            for p, s in zip(dev_imdb_sent_ids, dev_imdb_y_pred):
-                f.write(f"{p}\t{s}\n")
+    # if task == "tweets" or task == "multitask" or task == "multi-sentiment":
+    #     with open(args.tweets_dev_out, "w+") as f:
+    #         print(f"dev sentiment acc :: {dev_tweets_accuracy :.3f}")
+    #         f.write("id,Predicted_Sentiment\n")
+    #         for p, s in zip(dev_tweets_sent_ids, dev_tweets_y_pred):
+    #             f.write(f"{p}\t{s}\n")
 
-        with open(args.imdb_test_out, "w+") as f:
-            f.write("id,Predicted_Sentiment\n")
-            for p, s in zip(test_imdb_sent_ids, test_imdb_y_pred):
-                f.write(f"{p}\t{s}\n")
+    #     with open(args.tweets_test_out, "w+") as f:
+    #         f.write("id,Predicted_Sentiment\n")
+    #         for p, s in zip(test_tweets_sent_ids, test_tweets_y_pred):
+    #             f.write(f"{p}\t{s}\n")
 
     if task == "qqp" or task == "multitask":
         with open(args.quora_dev_out, "w+") as f:

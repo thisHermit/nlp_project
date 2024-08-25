@@ -206,17 +206,17 @@ def train_multitask(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
     # Load data
     # Create the data and its corresponding datasets and dataloader:
-    sst_train_data, _, quora_train_data, sts_train_data, etpc_train_data, imdb_train_data= load_multitask_data(
-        args.sst_train, args.quora_train, args.sts_train, args.etpc_train, args.imdb_train, split="train"
+    sst_train_data, _, quora_train_data, sts_train_data, etpc_train_data, tweets_train_data= load_multitask_data(
+        args.sst_train, args.quora_train, args.sts_train, args.etpc_train, args.tweets_train, split="train"
     )
-    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data, imdb_dev_data = load_multitask_data(
-        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, args.imdb_dev, split="train"
+    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data, tweets_dev_data = load_multitask_data(
+        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, args.tweets_dev, split="train"
     )
 
     sst_train_dataloader = None
     sst_dev_dataloader = None
-    imdb_train_dataloader = None
-    imdb_dev_dataloader = None
+    tweets_train_dataloader = None
+    tweets_dev_dataloader = None
     quora_train_dataloader = None
     quora_dev_dataloader = None
     sts_train_dataloader = None
@@ -242,22 +242,22 @@ def train_multitask(args):
             collate_fn=sst_dev_data.collate_fn,
         )
 
-    # IMDB dataset
-    if args.task == "imdb" or args.task == "multitask" or args.task == "multi-sentiment":
-        imdb_train_data = SentenceClassificationDataset(imdb_train_data, args)
-        imdb_dev_data = SentenceClassificationDataset(imdb_dev_data, args)
+    # tweets dataset
+    if args.task == "tweets" or args.task == "multitask" or args.task == "multi-sentiment":
+        tweets_train_data = SentenceClassificationDataset(tweets_train_data, args)
+        tweets_dev_data = SentenceClassificationDataset(tweets_dev_data, args)
 
-        imdb_train_dataloader = DataLoader(
-            imdb_train_data,
+        tweets_train_dataloader = DataLoader(
+            tweets_train_data,
             shuffle=True,
             batch_size=args.batch_size,
-            collate_fn=imdb_train_data.collate_fn,
+            collate_fn=tweets_train_data.collate_fn,
         )
-        imdb_dev_dataloader = DataLoader(
-            imdb_dev_data,
+        tweets_dev_dataloader = DataLoader(
+            tweets_dev_data,
             shuffle=False,
             batch_size=args.batch_size,
-            collate_fn=imdb_dev_data.collate_fn,
+            collate_fn=tweets_dev_data.collate_fn,
         )   
 
     # Quora dataset (Paraphrase Detection)
@@ -330,12 +330,12 @@ def train_multitask(args):
 
     
     if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
-        saved = torch.load('/user/ahmed.assy/u11454/nlp_project/models/finetune-10-1e-05-dr-0.0-wd-0.0-imdb-93.8.pt')
+        saved = torch.load('/user/ahmed.assy/u11454/nlp_project/models/finetune-25-1e-05-tweets-61.6.pt')
         config = saved["model_config"]
         model = MultitaskBERT(config)
         model.load_state_dict(saved["model"], strict=False)
         model = model.to(device)
-        print(f"Loaded model to test from {'/user/ahmed.assy/u11454/nlp_project/models/finetune-10-1e-05-dr-0.0-wd-0.0-imdb-93.8.pt'}")
+        print(f"Loaded model to test from {'/user/ahmed.assy/u11454/nlp_project/models/finetune-25-1e-05-tweets-61.6.pt'}")
     else:
         model = MultitaskBERT(config)
         model = model.to(device)
@@ -375,11 +375,11 @@ def train_multitask(args):
                 train_loss += loss.item()
                 num_batches += 1
         
-        if args.task == "imdb" or args.task == "multitask" or args.task == "multi-sentiment":
-            # Train the model on the imdb dataset.
+        if args.task == "tweets" or args.task == "multitask" or args.task == "multi-sentiment":
+            # Train the model on the tweets dataset.
 
             for batch in tqdm(
-                imdb_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
+                tweets_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
             ):
                 b_ids, b_mask, b_labels = (
                     batch["token_ids"],
@@ -468,36 +468,36 @@ def train_multitask(args):
 
         train_loss = train_loss / num_batches
 
-        quora_train_acc, _, _, sst_train_acc, _, _, imdb_train_acc, _, _, sts_train_corr, _, _, etpc_train_acc, _, _ = (
+        quora_train_acc, _, _, sst_train_acc, _, _, tweets_train_acc, _, _, sts_train_corr, _, _, etpc_train_acc, _, _ = (
             model_eval_multitask(
                 sst_train_dataloader,
                 quora_train_dataloader,
                 sts_train_dataloader,
                 etpc_train_dataloader,
-                imdb_train_dataloader,
+                tweets_train_dataloader,
                 model=model,
                 device=device,
                 task=args.task,
             )
         )
 
-        quora_dev_acc, _, _, sst_dev_acc, _, _, imdb_dev_acc, _, _, sts_dev_corr, _, _, etpc_dev_acc, _, _ = (
+        quora_dev_acc, _, _, sst_dev_acc, _, _, tweets_dev_acc, _, _, sts_dev_corr, _, _, etpc_dev_acc, _, _ = (
             model_eval_multitask(
                 sst_dev_dataloader,
                 quora_dev_dataloader,
                 sts_dev_dataloader,
                 etpc_dev_dataloader,
-                imdb_dev_dataloader,
+                tweets_dev_dataloader,
                 model=model,
                 device=device,
                 task=args.task,
             )
         )
         print('SST', sst_train_acc,sst_dev_acc)
-        print('IMDB', imdb_train_acc, imdb_dev_acc)
+        print('tweets', tweets_train_acc, tweets_dev_acc)
         train_acc, dev_acc = {
             "sst": (sst_train_acc, sst_dev_acc),
-            "imdb": (imdb_train_acc, imdb_dev_acc),
+            "tweets": (tweets_train_acc, tweets_dev_acc),
             "sts": (sts_train_corr, sts_dev_corr),
             "qqp": (quora_train_acc, quora_dev_acc),
             "etpc": (etpc_train_acc, etpc_dev_acc),
@@ -535,8 +535,8 @@ def get_args():
     parser.add_argument(
         "--task",
         type=str,
-        help='choose between "sst","sts","qqp","etpc", "imdb", "multitask" to train for different tasks ',
-        choices=("sst", "sts", "qqp", "etpc", "multitask", "imdb", "multi-sentiment"),
+        help='choose between "sst","sts","qqp","etpc", "tweets", "multitask" to train for different tasks ',
+        choices=("sst", "sts", "qqp", "etpc", "multitask", "tweets", "multi-sentiment"),
         default="sst",
     )
 
@@ -559,9 +559,9 @@ def get_args():
     parser.add_argument("--sst_dev", type=str, default="data/sst-sentiment-dev.csv")
     parser.add_argument("--sst_test", type=str, default="data/sst-sentiment-test-student.csv")
     
-    parser.add_argument("--imdb_train", type=str, default="data/IMDB_train_data.csv")
-    parser.add_argument("--imdb_dev", type=str, default="data/IMDB_dev_data.csv")
-    parser.add_argument("--imdb_test", type=str, default="data/IMDB_test_data.csv")
+    parser.add_argument("--tweets_train", type=str, default="data/processed_tweets_train.csv")
+    parser.add_argument("--tweets_dev", type=str, default="data/processed_tweets_dev.csv")
+    parser.add_argument("--tweets_test", type=str, default="data/processed_tweets_test.csv")
 
     parser.add_argument("--quora_train", type=str, default="data/quora-paraphrase-train.csv")
     parser.add_argument("--quora_dev", type=str, default="data/quora-paraphrase-dev.csv")
