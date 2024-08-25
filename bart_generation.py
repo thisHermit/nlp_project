@@ -14,6 +14,8 @@ from optimizer import AdamW
 import os
 import sys
 
+import torch.nn.functional as F
+
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -67,6 +69,47 @@ def transform_data(dataset, args, max_length=256, shuffle=True):
     
     return dataloader
 
+
+def cosine_embedding_loss(model, tokenizer, generated_ids, target_ids, device):
+    # Get the encoder's output for the generated sentence
+    generated_attention_mask = (generated_ids != tokenizer.pad_token_id).long()
+    generated_encoder_output = model.get_encoder()(generated_ids, attention_mask=generated_attention_mask).last_hidden_state
+
+    # Get the encoder's output for the target sentence
+    target_attention_mask = (target_ids != tokenizer.pad_token_id).long()
+    target_encoder_output = model.get_encoder()(target_ids, attention_mask=target_attention_mask).last_hidden_state
+
+    # Calculate cosine similarity between the mean pooled representations
+    generated_embedding = torch.mean(generated_encoder_output, dim=1)
+    target_embedding = torch.mean(target_encoder_output, dim=1)
+    
+    return F.cosine_embedding_loss(generated_embedding, target_embedding, torch.ones(generated_embedding.size(0)).to(device))
+
+def identity_loss(input_ids, generated_ids, tokenizer):
+    """
+    Calculate the identity loss between input and generated sentences.
+    Returns 1 if the smaller text appears within the larger text, 0 otherwise.
+    """
+    input_text = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
+    generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+    
+    losses = []
+    for i_text, g_text in zip(input_text, generated_text):
+        i_text = i_text.strip().lower()
+        g_text = g_text.strip().lower()
+        
+        if len(i_text) <= len(g_text):
+            smaller, larger = i_text, g_text
+        else:
+            smaller, larger = g_text, i_text
+        
+        if smaller in larger:
+            losses.append(1.0)
+        else:
+            losses.append(0.0)
+    
+    return torch.tensor(losses, device=input_ids.device).mean()
+
 def train_model(model, train_data, train_dataset, dev_data, args, device, tokenizer):
     """
     Train the model. Return and save the model.
@@ -84,8 +127,21 @@ def train_model(model, train_data, train_dataset, dev_data, args, device, tokeni
                 input_ids, attention_mask, labels = [b.to(device) for b in batch]
                 
                 outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                identity_loss = torch.mean((input_ids == labels).float()) * 10
-                loss = outputs.loss + identity_loss 
+                
+                 # Generate output from the model
+                generated_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=256)
+                
+                # Decode the input and generated sequences to inspect them
+                input_texts = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
+                generated_texts = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+                
+    
+                # Calculate identity loss
+                id_loss = identity_loss(input_ids, generated_ids, tokenizer)
+                cos_loss = cosine_embedding_loss(model, tokenizer, generated_ids, labels, device)
+                
+                # Combine losses
+                loss = outputs.loss + cos_loss + id_loss
                 
                 loss.backward()
                 optimizer.step()
