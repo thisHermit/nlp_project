@@ -28,6 +28,29 @@ print("Current working directory:", os.getcwd())
 
 TQDM_DISABLE = False
 
+def create_dataloader(df, args, max_length=256):
+    tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large", local_files_only=True)
+    
+    inputs = tokenizer(
+        df['sentence1'].tolist(),
+        max_length=max_length,
+        padding='max_length',
+        truncation=True,
+        return_tensors='pt'
+    )
+    targets = tokenizer(
+        df['sentence2'].tolist(),
+        max_length=max_length,
+        padding='max_length',
+        truncation=True,
+        return_tensors='pt'
+    )
+    
+    input_ids, attention_masks, labels = inputs['input_ids'], inputs['attention_mask'], targets['input_ids']
+    dataset = TensorDataset(input_ids, attention_masks, labels)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    
+    return dataloader
 
 def transform_data(dataset, args, max_length=256, shuffle=True):
     """
@@ -67,13 +90,40 @@ def transform_data(dataset, args, max_length=256, shuffle=True):
     
     return dataloader
 
+def pre_train_model(model, train_data, train_dataset, dev_data, args, device, tokenizer):
+    optimizer = AdamW(model.parameters(), lr=1e-5)
+    num_epochs = args.epochs
+    
+    for epoch in range(num_epochs):
+        model.train()
+        total_loss = 0
+        
+        for batch in tqdm(train_data, disable=TQDM_DISABLE):
+            input_ids, attention_mask, labels = [b.to(device) for b in batch]
+            
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+            identity_loss = torch.mean((input_ids == labels).float()) * 10
+            loss = outputs.loss + identity_loss 
+            
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            
+            total_loss += loss.item()
+        
+        avg_train_loss = total_loss / len(train_data)
+        print(f"Epoch {epoch+1}/{num_epochs}, Average training loss: {avg_train_loss:.4f}")
+        print()
+    
+    return model
+
 def train_model(model, train_data, train_dataset, dev_data, args, device, tokenizer):
     """
     Train the model. Return and save the model.
     """
     ### TODO
     try:
-        optimizer = AdamW(model.parameters(), lr=5e-5)
+        optimizer = AdamW(model.parameters(), lr=1e-5)
         num_epochs = args.epochs
         
         for epoch in range(num_epochs):
@@ -84,8 +134,7 @@ def train_model(model, train_data, train_dataset, dev_data, args, device, tokeni
                 input_ids, attention_mask, labels = [b.to(device) for b in batch]
                 
                 outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                identity_loss = torch.mean((input_ids == labels).float()) * 10
-                loss = outputs.loss + identity_loss 
+                loss = outputs.loss
                 
                 loss.backward()
                 optimizer.step()
@@ -150,7 +199,7 @@ def test_model(test_data, test_ids, device, model, tokenizer):
         raise e
 
 
-def evaluate_model(model, test_data, args, device, tokenizer, verbose=False):
+def evaluate_model(model, test_data, args, device, tokenizer, verbose=False, paws=False):
     """
     You can use your train/validation set to evaluate models performance with the BLEU score.
     test_data is a Pandas Dataframe, the column "sentence1" contains all input sentence and 
@@ -160,7 +209,10 @@ def evaluate_model(model, test_data, args, device, tokenizer, verbose=False):
     bleu = BLEU()
     predictions = []
 
-    dataloader = transform_data(test_data, args, shuffle=False)
+    if paws:
+        dataloader = create_dataloader(test_data, args)
+    else:
+        dataloader = transform_data(test_data, args, shuffle=False)
     with torch.no_grad():
         for batch in dataloader: 
             input_ids, attention_mask, _ = batch
@@ -219,8 +271,10 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--use_gpu", action="store_true")
+    parser.add_argument("--paws_epochs", type=int, default=5)
+    parser.add_argument("--paws_batch_size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=64)
     args = parser.parse_args()
     return args
 
@@ -235,8 +289,25 @@ def finetune_paraphrase_generation(args):
     dev_dataset = pd.read_csv("data/etpc-paraphrase-dev-split.csv", sep="\t")
     test_dataset = pd.read_csv("data/etpc-paraphrase-generation-test-student.csv", sep="\t")
 
-    # You might do a split of the train data into train/validation set here
-    # ...
+    paws_df = pd.read_parquet('data/train.parquet')
+    paws_df = paws_df[paws_df['label'] == 1][['sentence1', 'sentence2']]
+
+    train_val_split = int(0.8 * len(paws_df))
+    paws_train_data = paws_df.iloc[:train_val_split]
+    paws_val_data = paws_df.iloc[train_val_split:]
+
+    # save values
+    saved_batch_size = args.batch_size
+    saved_epochs = args.epochs
+    args.epochs = args.paws_epochs
+    args.batch_size = args.paws_batch_size
+
+    paws_train_loader = create_dataloader(paws_df, args)
+    model = pre_train_model(model, paws_train_loader, paws_df, paws_val_data, args, device, tokenizer)
+
+    # restore values
+    args.epochs = saved_epochs
+    args.batch_size = args.saved_batch_size
 
     train_data = transform_data(train_dataset, args)
     dev_data = transform_data(dev_dataset, args)

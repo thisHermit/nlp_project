@@ -172,3 +172,6 @@ Miniconda3-latest.sh
 
 # vscode
 .vscode
+
+# ptg task extra dataset
+data/train.parquet
