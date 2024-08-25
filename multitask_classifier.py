@@ -7,6 +7,7 @@ import sys
 import time
 from types import SimpleNamespace
 
+import csv
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -22,8 +23,6 @@ from datasets import (
 )
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
-
-from smart_regulization import smart_loss
 
 
 
@@ -50,7 +49,7 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-
+EXP_NAME = "SMART"
 
 class MultitaskBERT(nn.Module):
     """
@@ -78,13 +77,6 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        self.sts_head = nn.Sequential(
-            nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
-            nn.ReLU(),
-            nn.Linear(BERT_HIDDEN_SIZE, 1)
-        )
-        # raise NotImplementedError
-        # raise NotImplementedError
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
 
 
@@ -116,8 +108,6 @@ class MultitaskBERT(nn.Module):
         sentiment_out = self.sentiment_linear(bert_output)
         return sentiment_out
 
-
-
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         """
         Given a batch of pairs of sentences, outputs a single logit for predicting whether they are paraphrases.
@@ -145,30 +135,30 @@ class MultitaskBERT(nn.Module):
         it will be handled as a logit by the appropriate loss function.
         Dataset: STS
         """
-        # print(input_ids_1)
+        # Get both Embeddings
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        # print(output_1)
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
-        # ### TODO
-        # raise NotImplementedError
+        
+        # Compute cosine similarity between both sentence embeddings
+        cos_sim = F.cosine_similarity(output_1, output_2)
 
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
 
+    def eval_fn(self,perturbed_embeddings_1,perturbed_embeddings_2):
+        # Compute cosine similarity between both sentence embeddings
+        cos_sim = F.cosine_similarity(perturbed_embeddings_1, perturbed_embeddings_2)
 
-############# TESTING SMARTTTTTT
-
-    def predict_similarity_SMART(self, output_1, output_2):
-
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
     
     def get_embeddings(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        return output_1,output_2
+        
+        return output_1,output_2#    
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -183,6 +173,26 @@ class MultitaskBERT(nn.Module):
         ### TODO
         raise NotImplementedError
 
+def inf_norm(x):
+    return torch.norm(x, p=2, dim=-1, keepdim=True)
+
+def smart_loss(model, embeddings_1,embeddings_2, logits, epsilon=1e-3):
+    # Generate perturbed embeddings
+    embed_norm_1= inf_norm(embeddings_1 )
+    noise_1 = torch.randn_like(embeddings_1) * epsilon * embed_norm_1
+    perturbed_embeddings_1 = embeddings_1 + noise_1
+
+    embed_norm_2 = inf_norm(embeddings_2)
+    noise_2 = torch.randn_like(embeddings_2) * epsilon * embed_norm_2
+    perturbed_embeddings_2 = embeddings_2 + noise_2
+
+    # Get predictions for perturbed embeddings
+    perturbed_logits = model.eval_fn(perturbed_embeddings_1,perturbed_embeddings_2)
+
+    # Compute KL divergence
+    kl_div = nn.KLDivLoss(reduction="batchmean")
+
+    return kl_div(F.log_softmax(perturbed_logits, dim=-1), F.softmax(logits, dim=-1))
 
 def save_model(model, optimizer, args, config, filepath):
     # ---------------------------------------------------
@@ -371,15 +381,18 @@ def train_multitask(args):
                 labels = labels.to(device)
 
                 optimizer.zero_grad()
-                # logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
 
-
+                # get cosine sim
+                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
+                mse_loss =  F.mse_loss(logits, labels.float())
+                
                 # Get embeddings from the model for SMART loss computation
                 embeddings_1,embeddings_2 = model.get_embeddings(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
 
-
-                loss = smart_loss(model , embeddings_1, embeddings_2, labels)
-
+                # computer smart_loss
+                smart_l = smart_loss(model , embeddings_1, embeddings_2, logits)
+                loss = mse_loss + 0.5 * smart_l
+                
                 # Backpropagation and optimization step
                 loss.backward()
                 optimizer.step()
@@ -462,6 +475,18 @@ def train_multitask(args):
         print(
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
+
+        filename = 'results.csv'
+        file_exists = os.path.isfile(filename)
+        # Open the CSV file in append mode
+        with open(filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            
+            # If file does not exist, write the header
+            if not file_exists:
+                writer.writerow(['exp', 'epoch_num', 'loss','train_corr','dev_corr'])
+            
+            writer.writerow([EXP_NAME, epoch+1, train_loss,train_acc,dev_acc])
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
