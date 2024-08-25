@@ -27,6 +27,12 @@
 
 #### Setup
 
+This task uses only one external library `smart_pytorch`
+
+```bash
+pip install smart_pytorch
+```
+
 The model was trained and evaluated on the [Grete cluster provided by GWDG](https://gwdg.de/hpc/systems/grete/) on a single H100. To reproduce the experiments, the following command requests a H100 for 2 hours, which are sufficient to run each experiment independently.
 
 ```bash
@@ -53,7 +59,7 @@ To run any of the experiments, switch to the corresponding branch and then run t
 Please note that the branch named ptd-exp1 is actually the baseline model branch with the latest commits changes merged in and not the first experiment and so the count in the branch names is off by one.
 
 ```bash
-git co ptd-exp2 # switch to an experiment branch
+git checkout ptd-exp2 # switch to an experiment branch
 conda activate dnlp # activate the conda environment
 python3 bart_detection.py --use_gpu # run the experiment
 ```
@@ -65,7 +71,7 @@ python3 bart_detection.py --use_gpu # run the experiment
 #### Experiment 1
 
 ```bash
-git co ptd-exp2
+git checkout ptd-exp2
 conda activate dnlp
 python3 bart_detection.py --use_gpu
 ```
@@ -73,7 +79,7 @@ python3 bart_detection.py --use_gpu
 #### Experiment 2
 
 ```bash
-git co ptd-exp3
+git checkout ptd-exp3
 conda activate dnlp
 python3 bart_detection.py --use_gpu
 ```
@@ -81,7 +87,7 @@ python3 bart_detection.py --use_gpu
 #### Experiment 3
 
 ```bash
-git co ptd-exp4
+git checkout ptd-exp4
 conda activate dnlp
 python3 bart_detection.py --use_gpu
 ```
@@ -89,7 +95,7 @@ python3 bart_detection.py --use_gpu
 #### Experiment 4
 
 ```bash
-git co ptd-exp5
+git checkout ptd-exp5
 conda activate dnlp
 python3 bart_detection.py --use_gpu
 ```
@@ -97,7 +103,7 @@ python3 bart_detection.py --use_gpu
 #### Experiment 5
 
 ```bash
-git co ptd-exp6
+git checkout ptd-exp6
 conda activate dnlp
 python3 bart_detection.py --use_gpu
 ```
@@ -105,7 +111,7 @@ python3 bart_detection.py --use_gpu
 #### Experiment 6
 
 ```bash
-git co ptd-exp7
+git checkout ptd-exp7
 conda activate dnlp
 python3 bart_detection.py --use_gpu
 ```
@@ -113,21 +119,23 @@ python3 bart_detection.py --use_gpu
 #### Experiment 7
 
 ```bash
-git co ptd-exp8
+git checkout ptd-exp8
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu --optimu_finefsdfsdfzxcvsfsd
 ```
 
 </details>
 
 ### Paraphrase Type Generation
 
+#### PAWS
+
+Download dataset
+
 ```bash
 cd data
 wget -O train.parquet https://huggingface.co/datasets/google-research-datasets/paws/resolve/main/labeled_final/train-00000-of-00001.parquet
 ```
-
-#### PAWS
 
 ```
 TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu
@@ -168,6 +176,10 @@ We also explored simultaneous training on multiple datasets, including the Quora
 #### Identity Loss
 
 Loss punishes the exact same output.
+
+#### PAWS
+
+explain dataset
 
 # Experiments
 
@@ -244,7 +256,7 @@ Summarize all the results of your experiments in tables:
 
 Notes:
 
-- _These metrics for the baseline were observed after attempting to confirm and reproduce the final results. The initial recording of these metrics were 82.1% accuracy and 0.069 mcc._
+- \*_These metrics for the baseline were observed after attempting to confirm and reproduce the final results. The initial recording of these metrics were 82.1% accuracy and 0.069 mcc._
 
 > Discuss your results, observations, correlations, etc.
 
