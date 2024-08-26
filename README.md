@@ -390,7 +390,7 @@ Multi-Head Attention (MHA) enhances the model's ability to capture multiple pers
 
 Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incorporated a gradual unfreezing strategy during the fine-tuning process of our model. This method begins with all layers of the pre-trained BERT model frozen, and progressively unfreezes them over the course of training. The gradual unfreezing allows the model to adapt to the specific downstream task in a controlled manner, reducing the risk of catastrophic forgetting and ensuring that the model retains valuable general features learned during pre-training. This strategy balances leveraging pre-trained knowledge with the need to fine-tune the model effectively for the new task.
 
-## Multiple Negative Ranking Loss (MNRL) for Semantic Textual Similarity with BERT
+## Multiple Negative Ranking Loss (MNRL) for Semantic Textual Similarity
 
 ### Overview
 
@@ -426,7 +426,7 @@ Multiple Negative Ranking Loss (MNRL) is a powerful loss function used to enhanc
 
 # Experiments
 
-### Task 1: Paraphrase Type Detection
+## Task 1: Paraphrase Type Detection
 
 - All experiments for this task are evaluated using MCC.
 - Early stopping is used within all experiments to use the model with the best Validation MCC.
@@ -611,7 +611,7 @@ Experiment 4 returns the best mcc while simultaneous training solves the problem
 
 </details>
 
-### Task 2: Paraphrase Type Generation
+## Task 2: Paraphrase Type Generation
 
 - All experiments for this task are evaluated using the Penalized BLEU Score.
 - A train val split of 0.9 was used (since the dataset is not very large).
@@ -695,7 +695,7 @@ These are the results of the baseline, where we simply use a linear layer on top
 </details>
 
 
-### Task 3: Quora Question Pairs - Paraphrase Detection
+## Task 3: Quora Question Pairs - Paraphrase Detection
 
 In this section, we explore various experiments conducted to enhance the performance of our paraphrase detection model. The primary objective is to accurately identify whether pairs of sentences are paraphrases while ensuring the model is robust and generalizes well to unseen data. We experimented with several advanced techniques, including SMART regularization, multi-head attention, and different pooling strategies for embedding generation. Additionally, we adopted a gradual unfreezing strategy during fine-tuning, inspired by the ULMFiT approach, to mitigate overfitting and allow the model to adapt better to the paraphrase detection task.
 
@@ -948,7 +948,7 @@ The Gradual Unfreezing approach provided a stable training process, leading to c
 
 </details>
 
-### Task 4: Sentiment Analysis with BERT on the SST Dataset
+## Task 4: Sentiment Analysis with BERT on the SST Dataset
 
 This part focuses on sentiment analysis using the BERT model on the Stanford Sentiment Treebank (SST) dataset. Sentiment analysis is a fundamental task in Natural Language Processing (NLP) that involves determining the sentiment expressed in a text. The SST dataset is a widely-used benchmark that provides labeled sentences with sentiment scores across different classes.
 
@@ -1219,7 +1219,7 @@ change the following constants in **multitask_calssifier.py**
 </details>
 
 
-### Task 5: Semantic Textual Similarity (STS)
+## Task 5: Semantic Textual Similarity (STS)
 
 #### Problem Description
 
