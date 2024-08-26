@@ -1415,13 +1415,13 @@ All visulations are within their respective task and experiment.
 
 ## Members Contribution
 
-**Madkour, Khaled:** _implemented the training objective using X, Y, and Z. Supported member 2 in refactoring the code. Data cleaning, etc._
+**Madkour, Khaled:** _implemented all the experiments for Semantic Textual Similarity.
 
 **Khan, Bashar Jaan:** _implemented all the experiments for paraphrase type detection. Helped Muneeb work on paraphrase type generation (equal contributions)_
 
 **Khan, Muneeb:** _implemented all the experiments for paraphrase detection. Helped Bashar work on paraphrase type generation (equal contributions)_
 
-**Assy, Ahmed Tamer:** _implemented the training objective using X, Y, and Z. Supported member 2 in refactoring the code. Data cleaning, etc._
+**Assy, Ahmed Tamer:** _implemented all the experiments for Sentiment Analysis.
 
 # AI-Usage Card
 
