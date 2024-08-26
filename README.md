@@ -259,9 +259,9 @@ python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_
 - `--option finetune`: This option specifies that the BERT parameters will be updated during training (finetuning).
 - `--task qqp`: Specifies that the task is paraphrase detection on the Quora Question Pairs (QQP) dataset.
 - `--use_gpu`: Enables GPU usage if available.
-- `--pooling_type self_attention`: Uses self-attention pooling for sentence embeddings. Other options include cls, mean, and max.
+- `--pooling_type self_attention`: Uses self-attention pooling for sentence embeddings. Other options include `cls`, `mean`, and `max`.
 - `--lr 1e-5`: Sets the learning rate to 1e-5. You can adjust this value depending on your experiments.
-- `--local_files_only`: Instructs the script to use local files only, useful if you're running the script offline.
+- `--local_files_only`: Instructs the script to use local files only, useful if you're running the script offline or on the GWDG GPU node.
 - `--epochs 30`: Runs the training for 30 epochs.
 - `--scheduler gradual_unfreeze`: Uses a gradual unfreezing schedule where layers are gradually unfrozen during training.
 - `--freeze_epochs 3`: Freezes all BERT layers for the first 3 epochs.
