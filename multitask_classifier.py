@@ -23,6 +23,9 @@ from datasets import (
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
 from losses import FocalLoss, DiceLoss
+from auto_encoder import Autoencoder
+from torch.optim import Adam
+
 TQDM_DISABLE = False
 
 # Function to select a subset
@@ -55,7 +58,12 @@ LABELSMOOTHING = 0.0
 
 # Architectures
 BiLSTM = False
-MLP = True
+MLP = False
+
+# Auto-Encoder
+HIDDEN_DIMS = [512, 256, 128, 64]
+AUTOENCODER = True
+AOE = False # to train the AOE
 
 # loss function
 # CrossEntropyLoss (cel), FocalLoss (fl), Hinge Loss (Multi-Class SVM) (hl),
@@ -90,6 +98,10 @@ class MultitaskBERT(nn.Module):
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
         self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
         
+        # AutoEncoder
+        self.autoencoder = Autoencoder(input_dim=BERT_HIDDEN_SIZE, hidden_dims=HIDDEN_DIMS)
+        self.autoencoder_sentiment_linear = nn.Linear(HIDDEN_DIMS[-1], N_SENTIMENT_CLASSES)
+
         # BiLSTM backbone  
         self.lstm = nn.LSTM(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE // 2, bidirectional=True, batch_first=True)
 
@@ -105,6 +117,7 @@ class MultitaskBERT(nn.Module):
         self.batch_norm = nn.BatchNorm1d(BERT_HIDDEN_SIZE) 
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
         self.biary_sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, 2)
+
 
 
     def forward(self, input_ids, attention_mask):
@@ -129,22 +142,41 @@ class MultitaskBERT(nn.Module):
         Thus, your output should contain 5 logits for each sentence.
         Dataset: SST
         """
+        device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
         ### TODO
         # raise NotImplementedError
         bert_output = self.forward(input_ids, attention_mask)
         
-        # BiLSTM layer
-        if BiLSTM:
-            bert_output, _ = self.lstm(bert_output)
-        
-        # Residual MLP
-        if MLP:
-            bert_output = self.mlp(bert_output) + bert_output
+        # AutoEncoder
+        if AUTOENCODER:
+
+            # Load the pre-trained autoencoder encoder
+            autoencoder = self.autoencoder.to(device)
+            autoencoder.load_state_dict(torch.load("autoencoder/best_autoencoder.pth"))
+
+            for param in autoencoder.parameters():
+                param.requires_grad = True
+
+            # Pass the BERT embeddings through the autoencoder's encoder
+            with torch.no_grad():
+                bert_output = autoencoder.encode(bert_output)
+        else:
+            # BiLSTM layer
+            if BiLSTM:
+                bert_output, _ = self.lstm(bert_output)
+            
+            # Residual MLP
+            if MLP:
+                bert_output = self.mlp(bert_output) + bert_output
 
         bert_output = self.dropout(bert_output)
         if BATCHNORM: 
             bert_output = self.batch_norm(bert_output)
-        sentiment_out = self.sentiment_linear(bert_output)
+        
+        if AUTOENCODER:  # as the size of the auto encoder autput is not the same ase bert out
+            sentiment_out = self.autoencoder_sentiment_linear(bert_output)
+        else:
+            sentiment_out = self.sentiment_linear(bert_output)
         return sentiment_out
 
     def predict_binary_sentiment(self, input_ids, attention_mask):
@@ -791,11 +823,127 @@ def get_args():
     args = parser.parse_args()
     return args
 
+def train_autoencoder(args):
+
+    device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
+
+    # Load only tweets data
+    sst_train_data, _, quora_train_data, sts_train_data, etpc_train_data, tweets_train_data= load_multitask_data(
+        args.sst_train, args.quora_train, args.sts_train, args.etpc_train, args.tweets_train, split="train"
+    )
+    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data, tweets_dev_data = load_multitask_data(
+        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, args.tweets_dev, split="train"
+    )
+
+    # Initialize Quara DataLoader
+    quora_train_data = SentencePairDataset(quora_train_data, args)
+    quora_dev_data = SentencePairDataset(quora_dev_data, args)
+    
+    quora_train_dataloader = DataLoader(
+        quora_train_data,
+        shuffle=True,
+        batch_size=args.batch_size,
+        collate_fn=quora_train_data.collate_fn,
+    )
+    quora_dev_dataloader = DataLoader(
+        quora_dev_data,
+        shuffle=False,
+        batch_size=args.batch_size,
+        collate_fn=quora_dev_data.collate_fn,
+    )
+
+    # Initialize the BERT model
+    config = {
+        "hidden_dropout_prob": args.hidden_dropout_prob,
+        "hidden_size": BERT_HIDDEN_SIZE,
+        "data_dir": ".",
+        "option": args.option,
+        "local_files_only": args.local_files_only,
+    }
+
+    config = SimpleNamespace(**config)
+
+    model = MultitaskBERT(config).to(device)
+
+    # Initialize the Autoencoder model
+    autoencoder = Autoencoder(input_dim=BERT_HIDDEN_SIZE, hidden_dims=HIDDEN_DIMS).to(device)
+    optimizer = Adam(autoencoder.parameters(), lr=args.lr)
+    best_dev_loss = float("inf")
+
+    for epoch in range(args.epochs):
+        autoencoder.train()
+        train_loss = 0
+        num_batches = 0
+
+        # Training loop with quora DataLoader
+        for batch in tqdm(
+            quora_train_dataloader, desc=f"train-qqp-{epoch+1:02}", disable=TQDM_DISABLE
+        ):
+            b_ids_1, b_mask_1, b_ids_2, b_mask_2, b_labels = (
+                batch["token_ids_1"],
+                batch["attention_mask_1"],
+                batch["token_ids_2"],
+                batch["attention_mask_2"],
+                batch["labels"],
+            )
+
+            b_ids = b_ids_1.to(device)
+            b_mask = b_mask_1.to(device)
+                
+            optimizer.zero_grad()
+            with torch.no_grad():
+                embeddings = model(b_ids, attention_mask=b_mask)
+
+            reconstructed_embeddings = autoencoder(embeddings)
+            loss = F.mse_loss(reconstructed_embeddings, embeddings)
+            loss.backward()
+            optimizer.step()
+
+            train_loss += loss.item()
+            num_batches += 1
+
+        avg_train_loss = train_loss / num_batches
+        print(f"Epoch {epoch + 1}/{args.epochs}, Train Loss: {avg_train_loss:.4f}")
+
+        # Evaluation loop with quora DataLoader
+        autoencoder.eval()
+        dev_loss = 0
+        num_dev_batches = 0
+
+        with torch.no_grad():
+            for batch in quora_dev_dataloader:
+                b_ids, b_mask, _ = batch["token_ids_1"].to(device), batch["attention_mask_1"].to(device), batch["labels"].to(device)
+                embeddings = model(b_ids, attention_mask=b_mask)
+                reconstructed_embeddings = autoencoder(embeddings)
+                loss = F.mse_loss(reconstructed_embeddings, embeddings)
+                dev_loss += loss.item()
+                num_dev_batches += 1
+
+        avg_dev_loss = dev_loss / num_dev_batches
+        print(f"Epoch {epoch + 1}/{args.epochs}, Dev Loss: {avg_dev_loss:.4f}")
+
+        # Save the best model checkpoint
+        if avg_dev_loss < best_dev_loss:
+            best_dev_loss = avg_dev_loss
+            filepath = "autoencoder"
+            if not os.path.exists(filepath):
+                os.makedirs(filepath)
+            torch.save(autoencoder.state_dict(), f"{filepath}/best_autoencoder.pth")
+
+    print("Training completed.")
+
 
 if __name__ == "__main__":
     args = get_args()
     args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{LOSS}-{'MLP-' if MLP else ''}{'BiLSTM-' if BiLSTM else ''}{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
-    train_multitask(args)
-    # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.0-focal-sst.pt-->53%"
-    test_model(args)
+    if AOE:
+        # train the auto encoder
+        train_autoencoder(args)
+    else:
+        train_multitask(args)
+        # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.0-focal-sst.pt-->53%"
+        test_model(args)
+
+
+    
