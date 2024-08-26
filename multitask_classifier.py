@@ -810,21 +810,23 @@ def train_multitask(args):
             best_dev_acc = dev_acc
             save_model(model, optimizer, args, config, args.filepath)
             print(f"New best model saved with dev accuracy: {best_dev_acc:.3f}")
-        
-        # Check early stopping criteria
-        early_stopping(dev_acc, model, epoch, optimizer, args, config)
-        if early_stopping.early_stop:
-            print("Early stopping triggered")
-            break
             
-    # After training loop ends, ensure the best model according to EarlyStopping is loaded and saved
-    if early_stopping.best_score > best_dev_acc:
-        print(f"Early stopping model has better dev accuracy: {early_stopping.best_score:.3f} vs {best_dev_acc:.3f}")
-        model.load_state_dict(torch.load(early_stopping.path)["model_config"])
-        save_model(model, optimizer, args, config, args.filepath)
-        print(f"Best model according to EarlyStopping reloaded and saved with dev accuracy: {early_stopping.best_score:.3f}")
-    else:
-        print(f"Best model already saved with dev accuracy: {best_dev_acc:.3f}")
+        if args.task == "qqp":
+            # Check early stopping criteria
+            early_stopping(dev_acc, model, epoch, optimizer, args, config)
+            if early_stopping.early_stop:
+                print("Early stopping triggered")
+                break
+    
+    if args.task == "qqp":        
+        # After training loop ends, ensure the best model according to EarlyStopping is loaded and saved
+        if early_stopping.best_score > best_dev_acc:
+            print(f"Early stopping model has better dev accuracy: {early_stopping.best_score:.3f} vs {best_dev_acc:.3f}")
+            model.load_state_dict(torch.load(early_stopping.path)["model_config"])
+            save_model(model, optimizer, args, config, args.filepath)
+            print(f"Best model according to EarlyStopping reloaded and saved with dev accuracy: {early_stopping.best_score:.3f}")
+        else:
+            print(f"Best model already saved with dev accuracy: {best_dev_acc:.3f}")
 
 
 
@@ -987,7 +989,7 @@ def get_args():
     parser.add_argument("--use_mha", action="store_true", help="Use Multi-Head Attention in the Paraphrase Classifier")
     parser.add_argument("--use_mlp", action="store_true", help="Use MLP Head in the Paraphrase Classifier")
     
-    parser.add_argument("--scheduler", type=str, choices=["onecycle", "gradual_unfreeze", "None"], default="onecycle")
+    parser.add_argument("--scheduler", type=str, choices=["onecycle", "gradual_unfreeze", "None"], default="None")
     parser.add_argument("--freeze_epochs", type=int, default=1)
     parser.add_argument("--thaw_epochs", type=int, default=2)
     parser.add_argument("--initial_lr", type=float, default=1e-5)
