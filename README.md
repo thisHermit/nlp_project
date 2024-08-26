@@ -1479,7 +1479,7 @@ A patience value of 4 was used since larger values would never early stop (given
 
 ## Visualizations
 
-All visulations are within their respective task and experiment.
+All visulations are within their respective task and experiments.
 
 ## Members Contribution
 
