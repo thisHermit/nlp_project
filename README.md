@@ -1313,42 +1313,42 @@ Artificial Intelligence (AI) aided the development of this project. Please find 
 
 Write down all your references (other repositories, papers, etc.) that you used for your project.
 
-TODO: convert links below to proper references
 
 1. **MultipleNegativesRankingLoss**
 
+   - [MultipleNegativesRankingLoss - sentence-transformer implementation](https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/losses/MultipleNegativesRankingLoss.py)
    - [MultipleNegativesRankingLoss - SBERT Documentation](https://www.sbert.net/examples/training/nli/README.html#multiplenegativesrankingloss)
 
-2. **Efficient Natural Language Response Suggestion for Smart Reply**
+3. **Efficient Natural Language Response Suggestion for Smart Reply**
 
    - Henderson, M., Gupta, P., Liang, B., & Yatskar, M. (2017). _Efficient Natural Language Response Suggestion for Smart Reply_. arXiv preprint arXiv:1705.00652.
 
-3. **Cosine-Similarity Fine-Tuning**
+4. **Cosine-Similarity Fine-Tuning**
 
    - [CosineEmbeddingLoss - PyTorch Documentation](https://pytorch.org/docs/stable/generated/torch.nn.CosineEmbeddingLoss.html)
 
-4. **Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks**
+5. **Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks**
 
    - Reimers, N., & Gurevych, I. (2019). _Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks_. arXiv preprint arXiv:1908.10084.
 
-5. **SMART regularization**
+6. **SMART regularization**
 
    - Jiang, Z., He, C., Chen, W., Liu, X., Gao, J., & Zhao, T. (2020). _SMART: Robust and Efficient Fine-Tuning for Pre-trained Natural Language Models Principled Regularized Optimization_. arXiv preprint arXiv:1911.03437.
    - [SMART: GitHub Repository](https://github.com/archinetai/smart-pytorch/)
 
-6. **Gradual Unfreezing**
+7. **Gradual Unfreezing**
 
    - Howard, J., & Ruder, S. (2018). _Universal Language Model Fine-tuning for Text Classification_. arXiv preprint arXiv:1801.06146.
 
-7. **Sophia Optimizer**
+8. **Sophia Optimizer**
 
    - Liu, H., Li, Z., Hall, D., Liang, P., & Ma, T. (2023). _Sophia: A scalable stochastic second-order optimizer for language model pre-training_. arXiv preprint arXiv:2305.14342.
 
-8. **Auto-Encoding Variational Bayes**
+9. **Auto-Encoding Variational Bayes**
 
    - Kingma, D. P. (2013). _Auto-Encoding Variational Bayes_. arXiv preprint arXiv:1312.6114.
    - [Auto-Encoding Variational Bayes - arXiv](https://arxiv.org/abs/1312.6114)
 
-9. **Focal Loss for Dense Object Detection**
+10. **Focal Loss for Dense Object Detection**
    - Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2017). _Focal Loss for Dense Object Detection_. In Proceedings of the IEEE international conference on computer vision (pp. 2980-2988).
    - [Focal Loss for Dense Object Detection - arXiv](https://arxiv.org/abs/1708.02002)
