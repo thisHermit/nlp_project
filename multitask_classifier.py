@@ -23,6 +23,7 @@ from datasets import (
     load_multitask_data,
 )
 from evaluation import model_eval_multitask, test_model_multitask
+from optimizer import AdamW
 from optimizer import get_optimizer
 
 from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
@@ -633,8 +634,10 @@ def train_multitask(args):
     model = model.to(device)
 
     lr = args.lr
-    optimizer_name = args.optimizer
-    optimizer = get_optimizer(optimizer_name, params=model.parameters(), lr=lr)
+    optimizer = AdamW(model.parameters(), lr=lr)
+    if args.task == "qqp":
+        optimizer_name = args.optimizer
+        optimizer = get_optimizer(optimizer_name, params=model.parameters(), lr=lr)
     
     if args.scheduler == "onecycle":
         # Define the OneCycleLR scheduler
