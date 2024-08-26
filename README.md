@@ -104,14 +104,30 @@ python3 bart_detection.py --use_gpu # run the experiment
 
 <details>
 
-<summary>bash commands to run each experiment</summary>
+<summary>bash commands to run each experiment and reproduce the plots</summary>
+
+#### Baseline
+
+```bash
+git checkout ptd-exp1
+conda activate dnlp
+python3 bart_detection.py --use_gpu > exp1.txt 2>&1
+mv exp1.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp1.txt
+python3 better_pngfier.py exp1.txt-metrics.csv
+```
 
 #### Experiment 1
 
 ```bash
 git checkout ptd-exp2
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu > exp2.txt 2>&1
+mv exp2.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp2.txt
+python3 better_pngfier.py exp2.txt-metrics.csv
 ```
 
 #### Experiment 2
@@ -119,7 +135,11 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp3
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu > exp3.txt 2>&1
+mv exp3.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp3.txt
+python3 better_pngfier.py exp3.txt-metrics.csv
 ```
 
 #### Experiment 3
@@ -127,7 +147,11 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp4
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu > exp4.txt 2>&1
+mv exp4.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp4.txt
+python3 better_pngfier.py exp4.txt-metrics.csv
 ```
 
 #### Experiment 4
@@ -135,7 +159,11 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp5
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu > exp5.txt 2>&1
+mv exp5.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp5.txt
+python3 better_pngfier.py exp5.txt-metrics.csv
 ```
 
 #### Experiment 5
@@ -143,7 +171,11 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp6
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu > exp6.txt 2>&1
+mv exp6.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp6.txt
+python3 better_pngfier.py exp6.txt-metrics.csv
 ```
 
 #### Experiment 6
@@ -151,7 +183,11 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp7
 conda activate dnlp
-python3 bart_detection.py --use_gpu
+python3 bart_detection.py --use_gpu > exp7.txt 2>&1
+mv exp7.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp7.txt
+python3 better_pngfier.py exp7.txt-metrics.csv
 ```
 
 #### Experiment 7
@@ -159,7 +195,11 @@ python3 bart_detection.py --use_gpu
 ```bash
 git checkout ptd-exp8
 conda activate dnlp
-python3 bart_detection.py --use_gpu --optuna_optim
+python3 bart_detection.py --use_gpu --optuna_optim > exp8.txt 2>&1
+mv exp8.txt images/ptd-experiment
+cd images/ptd-experiment
+python3 csvfier.py exp8.txt
+python3 better_pngfier.py exp8.txt-metrics.csv
 ```
 
 <details>
@@ -268,7 +308,7 @@ After fine-tuning on PAWS, we used the resulting weights as the starting point f
 
 ### Paraphrase Type Generation
 
-All experiments for this task are evaulated using MCC. Early stoppping is used within all experiments to use the model with the best Validation MCC. A train val split of 0.9 was used (since the dataset is not very large). Also all accuracy graphs begin at 0.7 (ie 70% accuracy). The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#Hyperparameter_Optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
+All experiments for this task are evaulated using MCC. Early stoppping is used within all experiments to use the model with the best Validation MCC. A train val split of 0.9 was used (since the dataset is not very large). Also all accuracy graphs begin at 0.7 (ie 70% accuracy). The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
 
 <details>
 <summary><h4>Experiment 1</h4></summary>
@@ -323,12 +363,12 @@ All experiments for this task are evaulated using MCC. Early stoppping is used w
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - it's the same as experiment 2 but with smart loss added on top
 - What were the results?
-  - xxxxxxxx
+  - The accuracy for this model is even worse than the base line even if the mcc is better at 0.073.
 - Add relevant metrics and plots that describe the outcome of the experiment well.
-  GET THIS DATA AGAIN
   ![accuracies](images/ptd-experiments/exp4.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp4.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - Even though smart loss was added, the vae overfits to do the data quite a lot. This is unexpected since the randomness should have made the model more generalised instead of more specific to the data.
 
 </details>
 
@@ -343,7 +383,7 @@ All experiments for this task are evaulated using MCC. Early stoppping is used w
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - I have added the smart loss to the existing loss
 - What were the results?
-  - This experiment provides the MCC yet, a MCC of 0.096
+  - This experiment provides the highest MCC yet, a MCC of 0.099.
 - Add relevant metrics and plots that describe the outcome of the experiment well.
 
 ![accuracies](images/ptd-experiments/exp5.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp5.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
@@ -364,7 +404,7 @@ All experiments for this task are evaulated using MCC. Early stoppping is used w
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - I have added another head to train for paraphrase detection and another data loading pipeline for paraphrase detection.
 - What were the results?
-  - The model performs slightly better than baseline with mcc of 0.081
+  - The model performs slightly better than baseline with mcc of 0.058.
 - Add relevant metrics and plots that describe the outcome of the experiment well.
 
 ![accuracies](images/ptd-experiments/exp6.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp6.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
@@ -378,8 +418,15 @@ All experiments for this task are evaulated using MCC. Early stoppping is used w
 <summary><h4>Experiment 6</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
-  - Here I added 4 layers with ReLU and batch norm along with Focal Loss
-    - TODO: add code example here
+  - Here I added 4 layers with ReLU and batch norm along with Focal Loss. Each layers looks like the following (except the last one, which is a single linear layer)
+    - ```python
+      nn.Sequential(
+          nn.Linear(linear_size, linear_size),
+          nn.LayerNorm(linear_size),
+          nn.ReLU(),
+          nn.Dropout(dropout_rate),
+      )
+      ```
   - branch name: `ptd-exp7`
 - What were your expectations for this experiment?
   - Focal loss would better solve the class imbalance observed and would result is less over fitting.
@@ -450,11 +497,11 @@ Summarize all the results of your experiments in tables:
 | **Paraphrase Type Detection (PTD)** | **Accuracy** | **MCC** |
 | ----------------------------------- | ------------ | ------- |
 | Baseline (exp1)                     | 79.2%\*      | 0.049   |
-| VAE (exp3)                          | 80.9%        | 0.066   |
-| VAE + smart loss (exp4)             | 79.8%        | 0.068   |
-| Smart loss (exp5)                   | 79.6%        | 0.096   |
-| Simultaneos training (exp6)         | 81.1%        | 0.081   |
-| Deep layers with Focal Loss (exp7)  | 79.6%        | 0.062   |
+| VAE (exp3)                          | 80.7%        | 0.092   |
+| VAE + smart loss (exp4)             | 78.7%        | 0.073   |
+| Smart loss (exp5)                   | 80.5%        | 0.099   |
+| Simultaneos training (exp6)         | 82.7%        | 0.058   |
+| Deep layers with Focal Loss (exp7)  | 82.6%        | 0.064   |
 
 | **Paraphrase Type Generation (PTG)** | **Metric 1** | **Metric n** |
 | ------------------------------------ | ------------ | ------------ |
@@ -465,7 +512,7 @@ Summarize all the results of your experiments in tables:
 
 Notes:
 
-- \*_These metrics for the baseline were observed after attempting to confirm and reproduce the final results. The initial recording of these metrics were 82.1% accuracy and 0.069 mcc._
+- \*_These metrics for the baseline were observed after attempting to confirm and reproduce the final results. The initial recording of these metrics were 82.1% accuracy and 0.069 mcc but they are not longer reproducible._
 
 > Discuss your results, observations, correlations, etc.
 
@@ -486,6 +533,14 @@ Notes:
 > - Does improvement A converge faster during training than improvement B?
 > - Does Improvement B converge slower but perform better in the end?
 > - etc...
+
+### Paraphrase Type Generation
+
+#### Baseline
+
+![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+#### All experiments together
 
 ## Members Contribution
 
