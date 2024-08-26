@@ -961,7 +961,8 @@ For reference, you can view the performance of state-of-the-art models on the SS
 
 ![State-of-the-Art Models](https://github.com/user-attachments/assets/8a2b2056-a47f-4780-8c81-1047e90adbb2)
 <details>
-<summary><h4> **Experiment 1: Fine-Tuning BERT with New Datasets** </h4></summary>
+<summary><h4> Experiment 1: Fine-Tuning BERT with New Datasets </h4></summary>
+  
    - **Description**: This experiment involved fine-tuning the BERT model using three datasets:
      - **IMDB Dataset**: A dataset of 50,000 movie reviews for binary sentiment classification.
        - **Description**: The IMDB dataset consists of 25,000 positive and 25,000 negative movie reviews. Due to limited resources, only 17,500 samples were used for training.
@@ -1011,7 +1012,8 @@ For reference, you can view the performance of state-of-the-art models on the SS
 </details>
 
 <details>
-<summary><h4> **Experiment 2: Multi-Task Fine-Tuning with Sentiment Analysis and Semantic Similarity** </h4></summary>
+<summary><h4> Experiment 2: Multi-Task Fine-Tuning with Sentiment Analysis and Semantic Similarity </h4></summary>
+  
    - **Description**: This experiment involved fine-tuning the BERT model to perform two distinct tasks simultaneously:
      - **Sentiment Analysis Task**: Utilized the SST dataset for sentiment classification.
        - **Description**: The sentiment analysis task involved classifying sentences into different sentiment categories using a dropout layer and a classification layer.
@@ -1054,7 +1056,8 @@ change the following constants in **multitask_calssifier.py**
    ```
 </details>
 <details>
-<summary><h4> **Experiment 3: Changing the Classification Head** </h4></summary>
+<summary><h4> Experiment 3: Changing the Classification Head </h4></summary>
+  
    - **Description**: This experiment explored a more complex classification head by integrating residual connections and a multi-layer perceptron with a bidirectional LSTM (bLSTM):
      - **Architecture**:
        - **Bidirectional LSTM (bLSTM)**: Added to model the sequence of sentences or words, capturing the overall sentiment flow.
@@ -1076,7 +1079,8 @@ change the following constants in **multitask_calssifier.py**
 
 </details>
 <details>
-<summary><h4> **Experiment 4: Addressing Overfitting with Regularization Techniques** </h4></summary>
+<summary><h4> Experiment 4: Addressing Overfitting with Regularization Techniques </h4></summary>
+  
    - **Description**: This experiment aimed to tackle the overfitting issue by applying various regularization techniques to the model. The following techniques were tested:
      - **Dropout**: Applied with a dropout rate of 0.4.
        - **Justification**: Dropout helps prevent overfitting by randomly dropping units during training, which encourages the model to learn more robust features.
@@ -1112,7 +1116,7 @@ change the following constants in **multitask_calssifier.py**
 </details>
 
 <details>
-<summary><h4>**Experiment 5: Using Autoencoder as a Backbone After BERT**</h4></summary>
+<summary><h4> Experiment 5: Using Autoencoder as a Backbone After BERT </h4></summary>
   
    - **Description**: In this experiment, I utilized an autoencoder as a backbone after the BERT model to reconstruct the embeddings produced by BERT. The goal was to improve the quality of embeddings and subsequently enhance sentiment classification performance.
    - **Autoencoder Architecture**:
