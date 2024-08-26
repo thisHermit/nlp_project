@@ -1288,7 +1288,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 </details>
 ### general observations:
 
-[Convergence Speed vs Epoch](images/sts-experiments/all_exps_train_dev_corr_vs_epoch.png)
+![Convergence Speed vs Epoch](images/sts-experiments/all_exps_train_dev_corr_vs_epoch.png)
 
 #### Convergence Speed:
 
@@ -1303,8 +1303,9 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 - **BASE**, **COS_SIM**, **POOL_MEAN**, and **pretrained_qqp_task** often show more pronounced fluctuations in their correlation values, suggesting less stable training dynamics.
 - **VAE_6**, shows biggest fluctuations proving to be worse in terms of smooth learning behavior  
 
-[Convergence Speed vs Epoch](images/sts-experiments/final_performance_comparison.png)
-[heatmap_dev_corr](https://github.com/thisHermit/nlp_project/blob/main/images/sts-experiments/heatmap_dev_corr.png)
+![Convergence Speed vs Epoch](images/sts-experiments/final_performance_comparison.png)
+
+![heatmap_dev_corr](https://github.com/thisHermit/nlp_project/blob/main/images/sts-experiments/heatmap_dev_corr.png)
 
 ## Results
 
