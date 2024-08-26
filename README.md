@@ -357,7 +357,7 @@ We extracted the paraphrase pairs from the PAWS dataset, filtering out non-parap
 
 After fine-tuning on PAWS, we used the resulting weights as the starting point for fine-tuning BART on our specific dataset for paraphrase type generation. This transfer learning approach was designed to further tailor the model's capabilities to our task, while leveraging the generalized paraphrasing abilities it acquired from the PAWS dataset.
 
-### Combined Loss Function for Paraphrase Detection
+## Combined Loss Function for Paraphrase Detection
 
 In our paraphrase detection workflow, we employ a combined loss function that incorporates Binary Cross-Entropy (BCE) Loss, Cosine Embedding Loss, and Multiple Negative Ranking Loss (MNRL) to effectively capture various aspects of similarity and difference between sentence pairs.
 
@@ -367,11 +367,11 @@ In our paraphrase detection workflow, we employ a combined loss function that in
 
 By combining these three loss functions, we ensure that our model is not only capable of identifying paraphrases with high accuracy but also robustly handles variations in sentence structure and content across diverse paraphrase pairs.
 
-### SMART Regularization Technique
+## SMART Regularization Technique
 
 Incorporating the SMART (Smoothness-inducing Adversarial Regularization Training) technique into our loss function introduces a robust fine-tuning strategy that mitigates the risk of overfitting, especially crucial when adapting large pre-trained language models to specific tasks like paraphrase detection. SMART leverages smoothness-inducing regularization, which effectively controls the model's complexity by introducing small perturbations to the input and enforcing consistency in the model's predictions. This approach, based on the principles outlined by Jiang et al. (2020), ensures that the model generalizes well to unseen data, maintaining performance even when subjected to minor variations in input.
 
-### Pooling of Embedding Tokens for Paraphrase Detection
+## Pooling of Embedding Tokens for Paraphrase Detection
 
 To enhance the robustness of sentence representations for paraphrase detection, we incorporated various pooling strategies into our model. Specifically, we implemented `cls`, `mean`, `max`, and `self-attention` pooling techniques.
 
@@ -382,15 +382,15 @@ To enhance the robustness of sentence representations for paraphrase detection, 
 
 These pooling methods allow the model to flexibly capture different aspects of sentence meaning, improving its ability to detect paraphrases by comparing rich and varied sentence representations.
 
-### Multi-Head Attention on BERT Embeddings
+## Multi-Head Attention on BERT Embeddings
 
 Multi-Head Attention (MHA) enhances the model's ability to capture multiple perspectives within a sentence by allowing it to focus on different parts simultaneously. By applying MHA on top of BERT embeddings, we improve the model's representation of sentence pairs, which is particularly useful for tasks like paraphrase detection in our workflow. This approach leverages multiple attention heads to capture diverse aspects of the input, leading to a richer and more nuanced understanding, aiding in the accurate identification of paraphrases.
 
-### Gradual Unfreezing
+## Gradual Unfreezing
 
 Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incorporated a gradual unfreezing strategy during the fine-tuning process of our model. This method begins with all layers of the pre-trained BERT model frozen, and progressively unfreezes them over the course of training. The gradual unfreezing allows the model to adapt to the specific downstream task in a controlled manner, reducing the risk of catastrophic forgetting and ensuring that the model retains valuable general features learned during pre-training. This strategy balances leveraging pre-trained knowledge with the need to fine-tune the model effectively for the new task.
 
-### Multiple Negative Ranking Loss (MNRL) for Semantic Textual Similarity with BERT
+## Multiple Negative Ranking Loss (MNRL) for Semantic Textual Similarity with BERT
 
 ### Overview
 
