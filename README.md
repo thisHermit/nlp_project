@@ -743,8 +743,6 @@ While the combined loss function did improve the validation accuracy slightly, t
 <details>
 <summary><h4>Experiment 2: SMART Regularization with Combined Loss Function</h4></summary>
 
-**What experiments are you executing? Don't forget to tell how you are evaluating things.**
-
 In this experiment, I incorporated SMART (Smoothness-Inducing Adversarial Regularization Training) alongside the combined loss function (Binary Cross-Entropy Loss, Cosine Embedding Loss, and Multiple Negatives Ranking Loss) used in Experiment 1. The objective was to assess whether SMART could enhance the model's generalization and further improve validation accuracy. The model was evaluated based on its performance on the validation set of the paraphrase detection task.
 
 **Expectations for this experiment**
