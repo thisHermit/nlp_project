@@ -371,7 +371,8 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 
 <details>
 <summary><h4>Experiment 0: Baselline</h4></summary>
-![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)  
 </details>
 
 <details>
