@@ -255,6 +255,50 @@ python3 gen_pngfier.py gen_exp3.txt-metrics.csv
 
 </details>
 
+### Quora Question Pairs
+
+#### Setup
+To run the script for the QQP (Quora Question Pairs) paraphrase detection task, you can use the following example command:
+
+```bash
+python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_type self_attention --lr 1e-5 --local_files_only --epochs 30 --scheduler gradual_unfreeze --freeze_epochs 3 --thaw_epochs 6 --use_mha --use_mlp
+```
+##### Explanation of the Command And Available Options
+- `--option finetune`: This option specifies that the BERT parameters will be updated during training (finetuning).
+- `--task qqp`: Specifies that the task is paraphrase detection on the Quora Question Pairs (QQP) dataset.
+- `--use_gpu`: Enables GPU usage if available.
+- `--pooling_type self_attention`: Uses self-attention pooling for sentence embeddings. Other options include cls, mean, and max.
+- `--lr 1e-5`: Sets the learning rate to 1e-5. You can adjust this value depending on your experiments.
+- `--local_files_only`: Instructs the script to use local files only, useful if you're running the script offline.
+- `--epochs 30`: Runs the training for 30 epochs.
+- `--scheduler gradual_unfreeze`: Uses a gradual unfreezing schedule where layers are gradually unfrozen during training.
+- `--freeze_epochs 3`: Freezes all BERT layers for the first 3 epochs.
+- `--thaw_epochs 6`: Gradually unfreezes layers over the next 6 epochs.
+- `--use_mha`: Enables the usage of a Multi-Head Attention layer in the paraphrase classifier.
+- `--use_mlp`: Enables the usage of an MLP Head in the paraphrase classifier.
+
+##### Configurable Options
+- **Optimizer**: The default optimizer used is Sophia. You can switch to Adam by setting --optimizer adam.
+
+```bash
+
+--optimizer adam
+```
+- **Pooling Type**: The default is `self_attention`. You can choose other pooling methods such as `cls`, `mean`, or `max`.
+
+```bash
+
+--pooling_type cls
+```
+
+- **Scheduler**: The default is gradual_unfreeze. You can switch to onecycle by setting:
+
+```bash
+
+--scheduler onecycle
+```
+- **MLP Head and MHA**: Both `--use_mha` and `--use_mlp` flags are optional. If you do not want to use the MLP head or MHA, simply omit these flags.
+
 # Methodology
 
 > In this section explain what and how you did your project.
