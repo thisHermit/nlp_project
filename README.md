@@ -27,13 +27,7 @@
 
 > _Hint_: At the end of the project you can set up a new environment and follow your setup instructions making sure they are sufficient and if you can reproduce your results.
 
-> Following the setup instructions for the different tasks:
-
-### Paraphrase Type Detection
-
-#### Setup
-
-##### Base Setup
+## Base Setup
 
 Run the setup.sh file or alternatively run the commands below (replacing `<env_name>` with a suitable name.)
 
@@ -52,26 +46,20 @@ fi
 
 # Install additional packages
 conda install tqdm==4.66.2 requests==2.31.0 transformers==4.38.2 tensorboard==2.16.2 tokenizers==0.15.1 scikit-learn==1.5.1 -c conda-forge -c huggingface
-pip install explainaboard-client==0.1.4 sacrebleu==2.4.0 optuna==3.6.1 smart_pytorch==0.0.4
-
+pip install explainaboard-client==0.1.4 sacrebleu==2.4.0 optuna==3.6.1 smart_pytorch==0.0.4 sophia-optimizer==0.2.5
 ```
 
-In case the packages above are already installed, use the command below. This task uses 3 external libraries: `smart_pytorch`, `optuna` and `matplotlib`.
+> Follow the specific setup instructions for the different tasks:
+
+### Paraphrase Type Detection Setup
+
+#### Setup
+
+This task uses 3 external libraries: `smart_pytorch`, `optuna` and `matplotlib`. Use the command below to install them.
 
 ```bash
 pip install smart_pytorch optuna matplotlib
 ```
-
-<details>
-<summary>(Optionally) To reproduce the plots,</summary>
-Install the matplotlib library as well
-
-```bash
-conda activate dnlp
-conda install
-```
-
-</details>
 
 The model was trained and evaluated on the [Grete cluster provided by GWDG](https://gwdg.de/hpc/systems/grete/) on a single H100. To reproduce the experiments, the following command requests a H100 for 2 hours, which are sufficient to run each experiment independently.
 
@@ -94,7 +82,7 @@ More details on the [srun options can be found here](https://slurm.schedmd.com/s
 
 #### Reproducing experiments
 
-To run any of the experiments, you switch to the corresponding experiment branch and then run the detection script `bart_detection.py`. The general command structure looks like:
+After getting access to the shell on grete, you can run any experiments. To do so, you switch to the corresponding experiment branch and then run the detection script `bart_detection.py`. The general command structure looks like:
 
 ```bash
 git checkout ptd-exp<x> # here <x> is a branch number
@@ -104,9 +92,9 @@ python3 bart_detection.py --use_gpu # run the experiment
 
 <details>
 
-<summary>bash commands to run each experiment and reproduce the plots</summary>
+<summary>bash commands to reproduce each experiment and the plots</summary>
 
-#### Baseline
+##### Baseline
 
 ```bash
 git checkout ptd-exp1
@@ -118,7 +106,7 @@ python3 csvfier.py exp1.txt
 python3 better_pngfier.py exp1.txt-metrics.csv
 ```
 
-#### Experiment 1
+##### Experiment 1
 
 ```bash
 git checkout ptd-exp2
@@ -130,7 +118,7 @@ python3 csvfier.py exp2.txt
 python3 better_pngfier.py exp2.txt-metrics.csv
 ```
 
-#### Experiment 2
+##### Experiment 2
 
 ```bash
 git checkout ptd-exp3
@@ -142,7 +130,7 @@ python3 csvfier.py exp3.txt
 python3 better_pngfier.py exp3.txt-metrics.csv
 ```
 
-#### Experiment 3
+##### Experiment 3
 
 ```bash
 git checkout ptd-exp4
@@ -154,7 +142,7 @@ python3 csvfier.py exp4.txt
 python3 better_pngfier.py exp4.txt-metrics.csv
 ```
 
-#### Experiment 4
+##### Experiment 4
 
 ```bash
 git checkout ptd-exp5
@@ -166,7 +154,7 @@ python3 csvfier.py exp5.txt
 python3 better_pngfier.py exp5.txt-metrics.csv
 ```
 
-#### Experiment 5
+##### Experiment 5
 
 ```bash
 git checkout ptd-exp6
@@ -178,7 +166,7 @@ python3 csvfier.py exp6.txt
 python3 better_pngfier.py exp6.txt-metrics.csv
 ```
 
-#### Experiment 6
+##### Experiment 6
 
 ```bash
 git checkout ptd-exp7
@@ -190,7 +178,7 @@ python3 csvfier.py exp7.txt
 python3 better_pngfier.py exp7.txt-metrics.csv
 ```
 
-#### Experiment 7
+##### Experiment 7
 
 ```bash
 git checkout ptd-exp8
@@ -211,20 +199,61 @@ Please note that the branch named ptd-exp1 is actually the baseline model branch
 
 ### Paraphrase Type Generation
 
-#### PAWS
-
-Download dataset
+No extra libraries were used. The following dataset ([PAWS](https://huggingface.co/datasets/google-research-datasets/paws)) was downloaded from huggingface.
 
 ```bash
 cd data
 wget -O train.parquet https://huggingface.co/datasets/google-research-datasets/paws/resolve/main/labeled_final/train-00000-of-00001.parquet
 ```
 
-```
-TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu
+#### Reproducing experiments
+
+<details>
+
+<summary>bash commands to reproduce each experiment and the plots</summary>
+
+##### Experiment 1
+
+```bash
+git checkout ptg-cos-loss
+conda activate dnlp
+TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu > gen_exp1.txt 2>&1
+mv gen_exp1.txt images/ptg-experiments
+cd images/ptg-experiments
+python3 gen_csvfier.py gen_exp1.txt
+python3 gen_pngfier.py gen_exp1.txt-metrics.csv
+
 ```
 
-Running this commands generates a checkpoint file which saves the model after pre-training on the paws dataset. The model is saved in the file `paws_bart_generation_model.ckpt`.
+##### Experiment 2
+
+```bash
+git checkout ptg-paws
+conda activate dnlp
+TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu > gen_exp2.txt 2>&1
+mv gen_exp2.txt images/ptg-experiments
+cd images/ptg-experiments
+python3 gen_csvfier.py gen_exp2.txt
+python3 gen_pngfier.py gen_exp2.txt-metrics.csv
+```
+
+Running this commands generates a checkpoint file which saves the model after pre-training on the paws dataset. The model is saved in the file `paws_bart_generation_model.ckpt`. This file is required to run the next experiment.
+
+##### Experiment 3
+
+This experiment requires a `paws_bart_generation_model.ckpt`. It wasn't included in the repository since it was about 1.6G in size.
+
+```bash
+git checkout ptg-best-model
+conda activate dnlp
+TOKENIZERS_PARALLELISM=true python3 bart_generation.py --use_gpu > gen_exp3.txt 2>&1
+mv gen_exp3.txt images/ptg-experiments
+cd images/ptg-experiments
+python3 gen_csvfier.py gen_exp3.txt
+python3 gen_pngfier.py gen_exp3.txt-metrics.csv
+```
+
+</details>
 
 # Methodology
 
@@ -520,7 +549,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - We use a cosine embedding loss, and also later add [identity loss](#identity-loss). This identity loss was added because the generated output replicated the input many times. So the result is a combine loss
     We show the results of the implementations of these 2 losses together.
-  - branch name: `ptd-cos-loss`
+  - branch name: `ptg-cos-loss`
 - What were your expectations for this experiment?
   - We expected an immediate increase in perfomance as the cosine embedding loss makes sure that the paraphrases are close to each other while simultaneously not being exactly the same.
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
@@ -922,8 +951,42 @@ Artificial Intelligence (AI) aided the development of this project. Please find 
 
 Write down all your references (other repositories, papers, etc.) that you used for your project.
 
-### TODO: convert links below to proper references
+TODO: convert links below to proper references
 
-- https://arxiv.org/abs/1312.6114
-- https://arxiv.org/abs/1708.02002
-- Haoming Jiang, Pengcheng He, Weizhu Chen, Xiaodong Liu, Jianfeng Gao, and Tuo Zhao. SMART: Robust and Efficient Fine-Tuning for Pre-trained Natural Language Models through Principled Regularized Optimization. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, pages 2177–2190, Online, 2020. Association for Computational Linguistics. doi: 10.18653/v1/2020.acl-main.197.
+1. **MultipleNegativesRankingLoss**
+
+   - [MultipleNegativesRankingLoss - SBERT Documentation](https://www.sbert.net/examples/training/nli/README.html#multiplenegativesrankingloss)
+
+2. **Efficient Natural Language Response Suggestion for Smart Reply**
+
+   - Henderson, M., Gupta, P., Liang, B., & Yatskar, M. (2017). _Efficient Natural Language Response Suggestion for Smart Reply_. arXiv preprint arXiv:1705.00652.
+
+3. **Cosine-Similarity Fine-Tuning**
+
+   - [CosineEmbeddingLoss - PyTorch Documentation](https://pytorch.org/docs/stable/generated/torch.nn.CosineEmbeddingLoss.html)
+
+4. **Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks**
+
+   - Reimers, N., & Gurevych, I. (2019). _Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks_. arXiv preprint arXiv:1908.10084.
+
+5. **SMART regularization**
+
+   - Jiang, Z., He, C., Chen, W., Liu, X., Gao, J., & Zhao, T. (2020). _SMART: Robust and Efficient Fine-Tuning for Pre-trained Natural Language Models Principled Regularized Optimization_. arXiv preprint arXiv:1911.03437.
+   - [SMART: GitHub Repository](https://github.com/archinetai/smart-pytorch/)
+
+6. **Gradual Unfreezing**
+
+   - Howard, J., & Ruder, S. (2018). _Universal Language Model Fine-tuning for Text Classification_. arXiv preprint arXiv:1801.06146.
+
+7. **Sophia Optimizer**
+
+   - Liu, H., Li, Z., Hall, D., Liang, P., & Ma, T. (2023). _Sophia: A scalable stochastic second-order optimizer for language model pre-training_. arXiv preprint arXiv:2305.14342.
+
+8. **Auto-Encoding Variational Bayes**
+
+   - Kingma, D. P. (2013). _Auto-Encoding Variational Bayes_. arXiv preprint arXiv:1312.6114.
+   - [Auto-Encoding Variational Bayes - arXiv](https://arxiv.org/abs/1312.6114)
+
+9. **Focal Loss for Dense Object Detection**
+   - Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2017). _Focal Loss for Dense Object Detection_. In Proceedings of the IEEE international conference on computer vision (pp. 2980-2988).
+   - [Focal Loss for Dense Object Detection - arXiv](https://arxiv.org/abs/1708.02002)
