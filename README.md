@@ -631,7 +631,7 @@ These are the results of the baseline, where we simply use a linear layer on top
 <summary><h4>Experiment 1: Cosine Embedding + Identity Loss</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
-  - We use a cosine embedding loss, and also later add [identity loss](#identity-loss). This identity loss was added because the generated output replicated the input many times. So the result is a combine loss
+  - We use a cosine embedding loss, and also later add [identity loss](#identity-loss). This identity loss was added because the generated output seemed to be replicating the input for many examples. Therefore, we use a combination of these losses.
     We show the results of the implementations of these 2 losses together.
   - branch name: `ptg-cos-loss`
 - What were your expectations for this experiment?
@@ -649,7 +649,7 @@ These are the results of the baseline, where we simply use a linear layer on top
   ![cosine loss and identity loss](images/ptg-experiments/e2_gen.txt-metrics.csv_scores_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
-  - Both loss functions perform better than the baseline. Identity loss performs slightly worse but it seems to not suffer from over-fitting problem that plain cosine embedding loss suffers from. There room to improve the blue score better by optimizing the weight of the losses involved.
+  - Both loss functions perform better than the baseline. Identity loss performs slightly worse but it seems to not suffer from the over-fitting problem than plain cosine embedding loss suffers from. There is room to improve the BLEU score better by optimizing the weights of the losses involved.
 
 </details>
 
