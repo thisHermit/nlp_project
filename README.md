@@ -1537,5 +1537,5 @@ Write down all your references (other repositories, papers, etc.) that you used 
 
 10. **Focal Loss for Dense Object Detection**
     
-   - Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2017). _Focal Loss for Dense Object Detection_. In Proceedings of the IEEE international conference on computer vision (pp. 2980-2988).
-   - [Focal Loss for Dense Object Detection - arXiv](https://arxiv.org/abs/1708.02002)
+    - Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2017). _Focal Loss for Dense Object Detection_. In Proceedings of the IEEE international conference on computer vision (pp. 2980-2988).
+    - [Focal Loss for Dense Object Detection - arXiv](https://arxiv.org/abs/1708.02002)
