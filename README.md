@@ -1242,7 +1242,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
    - **Explanation:** A Variational Autoencoder (VAE) was introduced to enhance the quality of sentence embeddings by learning a more refined representation space. Experiments with different latent dimensions were conducted to find the optimal representation.
    - **Result:** The VAE with a latent dimension of 128 achieved a Pearson’s correlation of 0.581, while a smaller latent dimension of 6 achieved a Pearson’s correlation of 0.627. Smaller latent dimensions were found to be more beneficial for capturing subtle differences in meaning.
    
-![sts exp4](VAE_6_loss_corr_vs_epoch.png)
+![sts exp4](images/sts-experiments/VAE_6_loss_corr_vs_epoch.png)
 
 
 </details>
@@ -1253,7 +1253,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
    - **Explanation:** SMART (Sharpness-Aware Minimization for Robust Training) is a technique that adjusts the fine-tuning process to improve the model’s robustness and generalization by minimizing both the loss and its sharpness. This is particularly useful in STS, where overfitting to specific sentence pairs can be detrimental.
    - **Result:** SMART regularization with weights of 0.02 and 0.1 combined with MSE achieved Pearson’s correlations of 0.604 and 0.594 on the validation set, respectively. These results indicate that while SMART improved robustness, it did not surpass other advanced methods.
 
-![sts exp5](SMART_loss_corr_vs_epoch.png)
+![sts exp5](images/sts-experiments/SMART_loss_corr_vs_epoch.png)
 
 </details>
 <details>
@@ -1263,7 +1263,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
    - **Explanation:** MNRL is a ranking loss function designed to better distinguish between similar and dissimilar sentence pairs by considering multiple negative samples during training. This approach helps the model learn finer distinctions between sentence pairs.
    - **Result:** The MNRL approach alone achieved a Pearson’s correlation of 0.747 on the validation set. Combining MNRL with MSE loss yielded Pearson’s correlations of 0.804 with a weight of 0.5 and 0.807 with a weight of 1.0, demonstrating significant improvements in ranking accuracy.
 
-![sts exp6](MNRL_loss_corr_vs_epoch.png)
+![sts exp6](images/sts-experiments/MNRL_loss_corr_vs_epoch.png)
 
 </details>
 <details>
@@ -1273,7 +1273,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
    - **Explanation:** This method combines the regularization benefits of SMART with the ranking optimization of MNRL, aiming to enhance both robustness and ranking accuracy in the STS task.
    - **Result:** The model achieved a Pearson’s correlation of 0.804 on the validation set, indicating a significant improvement and demonstrating the complementary strengths of SMART and MNRL.
 
-![sts exp7](SMART+MNRL_loss_corr_vs_epoch.png)
+![sts exp7](images/sts-experiments/SMART+MNRL_loss_corr_vs_epoch.png)
 
 </details>
 <details>
@@ -1283,7 +1283,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
    - **Explanation:** Fine-tuning a pre-trained model on the Quora Question Pairs (QQP) dataset using the best model trained on QQP as a base, and applying the combined SMART + MNRL + MSE approach.
    - **Result:** This setup achieved the best performance with a Pearson’s correlation of 0.811 on the validation set, illustrating the advantage of leveraging pre-trained models.
 
-![sts exp7](pretrained_qqp_task_loss_corr_vs_epoch.png)
+![sts exp8](images/sts-experiments/pretrained_qqp_task_loss_corr_vs_epoch.png)
 
 </details>
 
