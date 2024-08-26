@@ -312,7 +312,7 @@ Run the following command to reproduce results
 ```
 # Methodology
 
-The methodology of all the different tasks is given below.
+The methodology of all the different tasks is aggregated below -
 
 ## VAE
 
