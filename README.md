@@ -390,6 +390,40 @@ Multi-Head Attention (MHA) enhances the model's ability to capture multiple pers
 
 Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incorporated a gradual unfreezing strategy during the fine-tuning process of our model. This method begins with all layers of the pre-trained BERT model frozen, and progressively unfreezes them over the course of training. The gradual unfreezing allows the model to adapt to the specific downstream task in a controlled manner, reducing the risk of catastrophic forgetting and ensuring that the model retains valuable general features learned during pre-training. This strategy balances leveraging pre-trained knowledge with the need to fine-tune the model effectively for the new task.
 
+### Multiple Negative Ranking Loss (MNRL) for Semantic Textual Similarity with BERT
+
+### Overview
+
+Multiple Negative Ranking Loss (MNRL) is a powerful loss function used to enhance the performance of models in tasks involving semantic textual similarity. It builds on the principle of contrastive learning, where the goal is to distinguish between similar and dissimilar pairs of text. In this methodology, we employ MNRL in conjunction with BERT, a state-of-the-art model for understanding contextual embeddings of text, to improve semantic similarity predictions.
+
+### Key Concepts
+
+1. **Semantic Textual Similarity (STS):** STS involves determining the degree to which two sentences or text passages are semantically equivalent. This is a regression or classification task where the model predicts a similarity score or label based on the textual content.
+
+2. **BERT Model:** BERT (Bidirectional Encoder Representations from Transformers) is a transformer-based model pre-trained on large text corpora. It captures rich contextual embeddings of text, making it suitable for various NLP tasks, including STS.
+
+3. **Multiple Negative Ranking Loss (MNRL):** MNRL is a type of contrastive loss function designed to improve the model's ability to differentiate between positive (similar) and negative (dissimilar) text pairs.
+
+### Why Cross-Entropy Over Margin Loss
+
+**1. Cross-Entropy Loss:**
+
+- **Definition:** Cross-entropy loss measures the performance of a classification model whose output is a probability value between 0 and 1. In the context of MNRL, it evaluates how well the model predicts the similarity scores between positive pairs relative to negative pairs.
+
+- **Advantages:**
+  - **Probabilistic Interpretation:** Cross-entropy provides a probabilistic framework that is beneficial for tasks where the output is a likelihood of similarity rather than a fixed margin.
+  - **Smooth Gradient:** Cross-entropy loss results in smoother gradients, which can be advantageous for optimization, especially in complex models like BERT.
+  - **Effective for Multiple Negatives:** When using MNRL with multiple negative samples, cross-entropy helps in effectively ranking the positive sample higher compared to multiple negative samples, making it more suitable for this task.
+
+**2. Margin Loss:**
+
+- **Definition:** Margin loss, such as the triplet loss, aims to ensure that the distance between similar pairs is smaller than the distance between dissimilar pairs by a predefined margin.
+
+- **Drawbacks:**
+  - **Fixed Margin:** Margin loss requires setting a fixed margin, which may not be optimal for all scenarios and can be difficult to tune.
+  - **Non-Probabilistic:** It does not provide probabilistic confidence, which may not capture the nuances of similarity scoring as effectively as cross-entropy.
+
+
 # Experiments
 
 ### Paraphrase Type Detection
@@ -1210,7 +1244,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 #### Experiments
 <details>
 
-<summary><h4> 1. **Baseline Model (BERT with MSE Loss):** </h4></summary>
+<summary><h4> 1. Baseline Model (BERT with MSE Loss): </h4></summary>
  
    - **Explanation:** The baseline model uses BERT with a linear layer on top, optimized with Mean Squared Error (MSE) loss to predict the similarity score between sentences. This approach provides a simple yet effective way to gauge how well BERT can handle STS without additional enhancements.
    - **Result:** The baseline model achieved a Pearson’s correlation of 0.384 on the validation set, indicating that while the model could capture some level of similarity, the performance was modest.
@@ -1218,7 +1252,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 ![sts exp1](images/sts-experiments/BASE_loss_corr_vs_epoch.png)
 </details>
 <details>
-<summary><h4> 2. **Cosine Similarity Loss:**  </h4></summary>
+<summary><h4> 2. Cosine Similarity Loss: </h4></summary>
 
    - **Explanation:** We introduced cosine similarity loss to align the model’s output directly with the similarity score. Cosine similarity measures the cosine of the angle between two non-zero vectors, making it a natural choice for sentence similarity tasks. This approach was combined with MSE loss to optimize the model.
    - **Result:** This approach yielded a Pearson’s correlation of 0.592 on the validation set, a significant improvement over the baseline, suggesting that direct optimization for similarity metrics can enhance performance.
@@ -1227,7 +1261,8 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 </details>
 <details>
 
-<summary><h4> 3. **Mean Pooling of Token Embeddings:**   </h4></summary>
+<summary><h4> 3. Mean Pooling of Token Embeddings:   </h4></summary>
+
    - **Explanation:** Mean pooling computes the mean of all token embeddings to get a single vector representing the entire sentence. While this method improved performance, it was less effective compared to more advanced techniques.
    - **Result:** The mean pooling approach achieved a Pearson’s correlation of 0.632 on the validation set, indicating that although it provided some improvement, it was not as effective as other methods.
 
@@ -1237,7 +1272,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 </details>
 <details>
 
-<summary><h4> 4. **Variational Autoencoder (VAE) Integration:**  </h4></summary>
+<summary><h4> 4. Variational Autoencoder (VAE) Integration:  </h4></summary>
  
    - **Explanation:** A Variational Autoencoder (VAE) was introduced to enhance the quality of sentence embeddings by learning a more refined representation space. Experiments with different latent dimensions were conducted to find the optimal representation.
    - **Result:** The VAE with a latent dimension of 128 achieved a Pearson’s correlation of 0.581, while a smaller latent dimension of 6 achieved a Pearson’s correlation of 0.627. Smaller latent dimensions were found to be more beneficial for capturing subtle differences in meaning.
@@ -1248,7 +1283,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 </details>
 <details>
 
-<summary><h4> 5. **SMART Regularization:**  </h4></summary>
+<summary><h4> 5. SMART Regularization:  </h4></summary>
 
    - **Explanation:** SMART (Sharpness-Aware Minimization for Robust Training) is a technique that adjusts the fine-tuning process to improve the model’s robustness and generalization by minimizing both the loss and its sharpness. This is particularly useful in STS, where overfitting to specific sentence pairs can be detrimental.
    - **Result:** SMART regularization with weights of 0.02 and 0.1 combined with MSE achieved Pearson’s correlations of 0.604 and 0.594 on the validation set, respectively. These results indicate that while SMART improved robustness, it did not surpass other advanced methods.
@@ -1268,7 +1303,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 </details>
 <details>
 
-<summary><h4> 7. **SMART + MNRL:**    </h4></summary>
+<summary><h4> 7. SMART + MNRL:   </h4></summary>
 
    - **Explanation:** This method combines the regularization benefits of SMART with the ranking optimization of MNRL, aiming to enhance both robustness and ranking accuracy in the STS task.
    - **Result:** The model achieved a Pearson’s correlation of 0.804 on the validation set, indicating a significant improvement and demonstrating the complementary strengths of SMART and MNRL.
@@ -1277,7 +1312,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 
 </details>
 <details>
-<summary><h4> 8. **Pre-trained QQP Model + SMART + MNRL + MSE:**    </h4></summary>
+<summary><h4> 8. Pre-trained QQP Model + SMART + MNRL + MSE:    </h4></summary>
 
   
    - **Explanation:** Fine-tuning a pre-trained model on the Quora Question Pairs (QQP) dataset using the best model trained on QQP as a base, and applying the combined SMART + MNRL + MSE approach.
