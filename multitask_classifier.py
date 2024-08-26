@@ -23,6 +23,7 @@ from datasets import (
 )
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
+from losses import FocalLoss, DiceLoss
 
 TQDM_DISABLE = False
 
@@ -47,7 +48,18 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
+DROPOUT = 0.0
+WEIGHTDECAY = 0.0
+BATCHNORM = False
+L1_LAMBDAl = 0
+GradientClipping = False
+LABELSMOOTHING = 0.0
 
+
+# loss function
+# CrossEntropyLoss (cel), FocalLoss (fl), Hinge Loss (Multi-Class SVM) (hl),
+# Mean Squared Error (MSE) for Soft Labels (mse), Dice Loss (Soft Dice Loss) (dl).
+LOSS = "fl"
 
 class MultitaskBERT(nn.Module):
     """
@@ -72,10 +84,14 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = False
             elif config.option == "finetune":
                 param.requires_grad = True
-        ### TODO
+
         # a linear layer for paraphrase detection
-        # self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
-        # self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
+       
+        self.dropout = nn.Dropout(p=DROPOUT)
+        self.batch_norm = nn.BatchNorm1d(BERT_HIDDEN_SIZE) 
+        self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        self.biary_sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, 2)
 
 
     def forward(self, input_ids, attention_mask):
@@ -103,7 +119,24 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # raise NotImplementedError
         bert_output = self.forward(input_ids, attention_mask)
+        bert_output = self.dropout(bert_output)
+        if BATCHNORM: 
+            bert_output = self.batch_norm(bert_output)
         sentiment_out = self.sentiment_linear(bert_output)
+        return sentiment_out
+
+    def predict_binary_sentiment(self, input_ids, attention_mask):
+        """
+        Given a batch of sentences, outputs logits for classifying sentiment.
+        There are 2 sentiment classes:
+        (0 - negative, 1- positive)
+        Thus, your output should contain 2 logits for each sentence.
+        Dataset: IMDB
+        """
+        ### TODO
+        # raise NotImplementedError
+        bert_output = self.forward(input_ids, attention_mask)
+        sentiment_out = self.biary_sentiment_linear(bert_output)
         return sentiment_out
 
 
@@ -251,15 +284,17 @@ def train_multitask(args):
     device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
     # Load data
     # Create the data and its corresponding datasets and dataloader:
-    sst_train_data, _, quora_train_data, sts_train_data, etpc_train_data = load_multitask_data(
-        args.sst_train, args.quora_train, args.sts_train, args.etpc_train, split="train"
+    sst_train_data, _, quora_train_data, sts_train_data, etpc_train_data, tweets_train_data= load_multitask_data(
+        args.sst_train, args.quora_train, args.sts_train, args.etpc_train, args.tweets_train, split="train"
     )
-    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data = load_multitask_data(
-        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, split="train"
+    sst_dev_data, _, quora_dev_data, sts_dev_data, etpc_dev_data, tweets_dev_data = load_multitask_data(
+        args.sst_dev, args.quora_dev, args.sts_dev, args.etpc_dev, args.tweets_dev, split="train"
     )
 
     sst_train_dataloader = None
     sst_dev_dataloader = None
+    tweets_train_dataloader = None
+    tweets_dev_dataloader = None
     quora_train_dataloader = None
     quora_dev_dataloader = None
     sts_train_dataloader = None
@@ -268,7 +303,7 @@ def train_multitask(args):
     etpc_dev_dataloader = None
 
     # SST dataset
-    if args.task == "sst" or args.task == "multitask":
+    if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
         sst_train_data = SentenceClassificationDataset(sst_train_data, args)
         sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
 
@@ -284,7 +319,25 @@ def train_multitask(args):
             batch_size=args.batch_size,
             collate_fn=sst_dev_data.collate_fn,
         )
-        
+
+    # tweets dataset
+    if args.task == "tweets" or args.task == "multitask" or args.task == "multi-sentiment":
+        tweets_train_data = SentenceClassificationDataset(tweets_train_data, args)
+        tweets_dev_data = SentenceClassificationDataset(tweets_dev_data, args)
+
+        tweets_train_dataloader = DataLoader(
+            tweets_train_data,
+            shuffle=True,
+            batch_size=args.batch_size,
+            collate_fn=tweets_train_data.collate_fn,
+        )
+        tweets_dev_dataloader = DataLoader(
+            tweets_dev_data,
+            shuffle=False,
+            batch_size=args.batch_size,
+            collate_fn=tweets_dev_data.collate_fn,
+        )   
+
     # Quora dataset (Paraphrase Detection)
     if args.task == "qqp" or args.task == "multitask":
         quora_train_data = SentencePairDataset(quora_train_data, args)
@@ -353,6 +406,9 @@ def train_multitask(args):
     print(pformat({k: v for k, v in vars(args).items() if "csv" not in str(v)}))
     print(separator)
 
+    
+ 
+    model = MultitaskBERT(config)
     if(args.load_pretrained != None):
         model,config = load_model(args.load_pretrained)
     else:
@@ -360,7 +416,7 @@ def train_multitask(args):
     model = model.to(device)
 
     lr = args.lr
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=WEIGHTDECAY)
     best_dev_acc = float("-inf")
 
     # Run for the specified number of epochs
@@ -369,11 +425,59 @@ def train_multitask(args):
         train_loss = 0
         num_batches = 0
 
-        if args.task == "sst" or args.task == "multitask":
+        if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
             # Train the model on the sst dataset.
 
             for batch in tqdm(
                 sst_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
+            ):
+                b_ids, b_mask, b_labels = (
+                    batch["token_ids"],
+                    batch["attention_mask"],
+                    batch["labels"],
+                )
+
+                b_ids = b_ids.to(device)
+                b_mask = b_mask.to(device)
+                b_labels = b_labels.to(device)
+
+                optimizer.zero_grad()
+                logits = model.predict_sentiment(b_ids, b_mask)
+                
+                # choose the loss function
+                if LOSS == "cel":
+                    loss = F.cross_entropy(logits, b_labels.view(-1), label_smoothing=LABELSMOOTHING)
+                if LOSS == 'fl':
+                    loss = FocalLoss(gamma=2.0)(logits, b_labels.view(-1))
+                if LOSS == 'hl':
+                    loss = nn.MultiMarginLoss()(logits, b_labels.view(-1))
+                if LOSS == "mse":
+                    smoothed_labels = (1 - LABELSMOOTHING) * F.one_hot(b_labels, num_classes=N_SENTIMENT_CLASSES) + LABELSMOOTHING / N_SENTIMENT_CLASSES
+                    loss = F.mse_loss(F.softmax(logits, dim=-1), smoothed_labels)
+                if LOSS == "dl":
+                    loss_fn = DiceLoss()
+                    targets = F.one_hot(b_labels, num_classes=N_SENTIMENT_CLASSES)
+                    loss = loss_fn(logits, targets)
+                
+                # L1 loss
+                l1_norm = sum(p.abs().sum() for p in model.parameters())
+                loss = loss + L1_LAMBDAl * l1_norm
+                
+                # Gradient Clipping
+                if GradientClipping:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                
+                loss.backward()
+                optimizer.step()
+
+                train_loss += loss.item()
+                num_batches += 1
+        
+        if args.task == "tweets" or args.task == "multitask" or args.task == "multi-sentiment":
+            # Train the model on the tweets dataset.
+
+            for batch in tqdm(
+                tweets_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
             ):
                 b_ids, b_mask, b_labels = (
                     batch["token_ids"],
@@ -472,35 +576,40 @@ def train_multitask(args):
 
         train_loss = train_loss / num_batches
 
-        quora_train_acc, _, _, sst_train_acc, _, _, sts_train_corr, _, _, etpc_train_acc, _, _ = (
+        quora_train_acc, _, _, sst_train_acc, _, _, tweets_train_acc, _, _, sts_train_corr, _, _, etpc_train_acc, _, _ = (
             model_eval_multitask(
                 sst_train_dataloader,
                 quora_train_dataloader,
                 sts_train_dataloader,
                 etpc_train_dataloader,
+                tweets_train_dataloader,
                 model=model,
                 device=device,
                 task=args.task,
             )
         )
 
-        quora_dev_acc, _, _, sst_dev_acc, _, _, sts_dev_corr, _, _, etpc_dev_acc, _, _ = (
+        quora_dev_acc, _, _, sst_dev_acc, _, _, tweets_dev_acc, _, _, sts_dev_corr, _, _, etpc_dev_acc, _, _ = (
             model_eval_multitask(
                 sst_dev_dataloader,
                 quora_dev_dataloader,
                 sts_dev_dataloader,
                 etpc_dev_dataloader,
+                tweets_dev_dataloader,
                 model=model,
                 device=device,
                 task=args.task,
             )
         )
-
+        print('SST', sst_train_acc,sst_dev_acc)
+        print('tweets', tweets_train_acc, tweets_dev_acc)
         train_acc, dev_acc = {
             "sst": (sst_train_acc, sst_dev_acc),
+            "tweets": (tweets_train_acc, tweets_dev_acc),
             "sts": (sts_train_corr, sts_dev_corr),
             "qqp": (quora_train_acc, quora_dev_acc),
             "etpc": (etpc_train_acc, etpc_dev_acc),
+            "multi-sentiment": (sst_train_acc, sst_dev_acc),  
             "multitask": (0, 0),  # TODO
         }[args.task]
 
@@ -513,14 +622,17 @@ def train_multitask(args):
             save_model(model, optimizer, args, config, args.filepath)
 
 
-def test_model(args):
+def test_model(args, filepath = None):
     with torch.no_grad():
         device = torch.device("cuda") if args.use_gpu else torch.device("cpu")
-        saved = torch.load(args.filepath)
+        if filepath != None:
+            saved = torch.load(filepath)
+        else:
+            saved = torch.load(args.filepath)
         config = saved["model_config"]
 
         model = MultitaskBERT(config)
-        model.load_state_dict(saved["model"])
+        model.load_state_dict(saved["model"], strict=False)
         model = model.to(device)
         print(f"Loaded model to test from {args.filepath}")
 
@@ -534,8 +646,8 @@ def get_args():
     parser.add_argument(
         "--task",
         type=str,
-        help='choose between "sst","sts","qqp","etpc","multitask" to train for different tasks ',
-        choices=("sst", "sts", "qqp", "etpc", "multitask"),
+        help='choose between "sst","sts","qqp","etpc", "tweets", "multitask" to train for different tasks ',
+        choices=("sst", "sts", "qqp", "etpc", "multitask", "tweets", "multi-sentiment"),
         default="sst",
     )
 
@@ -560,6 +672,10 @@ def get_args():
     parser.add_argument("--sst_train", type=str, default="data/sst-sentiment-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/sst-sentiment-dev.csv")
     parser.add_argument("--sst_test", type=str, default="data/sst-sentiment-test-student.csv")
+    
+    parser.add_argument("--tweets_train", type=str, default="data/processed_tweets_train.csv")
+    parser.add_argument("--tweets_dev", type=str, default="data/processed_tweets_dev.csv")
+    parser.add_argument("--tweets_test", type=str, default="data/processed_tweets_test.csv")
 
     parser.add_argument("--quora_train", type=str, default="data/quora-paraphrase-train.csv")
     parser.add_argument("--quora_dev", type=str, default="data/quora-paraphrase-dev.csv")
@@ -672,7 +788,8 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{args.task}.pt"  # save path
+    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{LOSS}-{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
+    # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.0-focal-sst.pt-->53%"
     test_model(args)
