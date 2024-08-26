@@ -1286,7 +1286,8 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 ![sts exp8](images/sts-experiments/pretrained_qqp_task_loss_corr_vs_epoch.png)
 
 </details>
-### general observations:
+
+### General Observations:
 
 ![Convergence Speed vs Epoch](images/sts-experiments/all_exps_train_dev_corr_vs_epoch.png)
 
@@ -1305,7 +1306,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 
 ![Convergence Speed vs Epoch](images/sts-experiments/final_performance_comparison.png)
 
-![heatmap_dev_corr](https://github.com/thisHermit/nlp_project/blob/main/images/sts-experiments/heatmap_dev_corr.png)
+![heatmap_dev_corr](images/sts-experiments/heatmap_dev_corr.png)
 
 ## Results
 
