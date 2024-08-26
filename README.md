@@ -283,7 +283,7 @@ python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_
 --pooling_type cls
 ```
 
-- **Scheduler**: The default is gradual_unfreeze. You can switch to `onecycle` by setting:
+- **Scheduler**: The default is `gradual_unfreeze`. You can switch to `onecycle` by setting:
 
 ```bash
 
