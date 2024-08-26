@@ -426,7 +426,7 @@ Multiple Negative Ranking Loss (MNRL) is a powerful loss function used to enhanc
 
 # Experiments
 
-### Paraphrase Type Detection
+### Task 1: Paraphrase Type Detection
 
 - All experiments for this task are evaluated using MCC.
 - Early stopping is used within all experiments to use the model with the best Validation MCC.
@@ -611,7 +611,7 @@ Experiment 4 returns the best mcc while simultaneous training solves the problem
 
 </details>
 
-### Paraphrase Type Generation
+### Task 2: Paraphrase Type Generation
 
 - All experiments for this task are evaluated using the Penalized BLEU Score.
 - A train val split of 0.9 was used (since the dataset is not very large).
@@ -695,7 +695,7 @@ These are the results of the baseline, where we simply use a linear layer on top
 </details>
 
 
-### Quora Question Pairs
+### Task 3: Quora Question Pairs - Paraphrase Detection
 
 In this section, we explore various experiments conducted to enhance the performance of our paraphrase detection model. The primary objective is to accurately identify whether pairs of sentences are paraphrases while ensuring the model is robust and generalizes well to unseen data. We experimented with several advanced techniques, including SMART regularization, multi-head attention, and different pooling strategies for embedding generation. Additionally, we adopted a gradual unfreezing strategy during fine-tuning, inspired by the ULMFiT approach, to mitigate overfitting and allow the model to adapt better to the paraphrase detection task.
 
@@ -948,7 +948,7 @@ The Gradual Unfreezing approach provided a stable training process, leading to c
 
 </details>
 
-### Sentiment Analysis with BERT on the SST Dataset
+### Task 4: Sentiment Analysis with BERT on the SST Dataset
 
 This part focuses on sentiment analysis using the BERT model on the Stanford Sentiment Treebank (SST) dataset. Sentiment analysis is a fundamental task in Natural Language Processing (NLP) that involves determining the sentiment expressed in a text. The SST dataset is a widely-used benchmark that provides labeled sentences with sentiment scores across different classes.
 
