@@ -965,7 +965,7 @@ The goal of this section is to improve the baseline accuracy of 52.2% achieved b
 - **Autoencoder Backbone**: Resulted in a significant drop in performance.
 - **Focal Loss**: Provided a slight improvement in SST accuracy.
 
-## Experiments
+### Experiments
 
 ### **Comparison of Best Models Across Experiments on development sets**
 We conducted several experiments to test different approaches and modifications. Below is a summary of these experiments:
@@ -1341,75 +1341,6 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 ![heatmap_dev_corr](images/sts-experiments/heatmap_dev_corr.png)
 
 ## Results
-
-<table>
-  <tr>
-    <th colspan="5" style="text-align:center; font-size:20px;">Sentiment Analysis</th>
-  </tr>
-  <tr>
-    <th>Experiment</th>
-    <th>Best Model/Technique</th>
-    <th>Dataset/Task</th>
-    <th>Evaluation Metric</th>
-    <th>Result</th>
-  </tr>
-  <tr>
-    <td>Experiment 1</td>
-    <td>BERT Fine-Tuned</td>
-    <td>IMDB/SST</td>
-    <td>Accuracy</td>
-    <td>93.8% / 52.6%</td>
-  </tr>
-  <tr>
-    <td>Experiment 1</td>
-    <td>BERT Fine-Tuned</td>
-    <td>Tweets/SST</td>
-    <td>Accuracy</td>
-    <td>61.6% / 52.6%</td>
-  </tr>
-  <tr>
-    <td>Experiment 2</td>
-    <td>Multi-Task Fine-Tuning (SMART + Mnrl)</td>
-    <td>SST</td>
-    <td>Accuracy</td>
-    <td>51%</td>
-  </tr>
-  <tr>
-    <td>Experiment 2</td>
-    <td>Multi-Task Fine-Tuning (SMART + Mnrl)</td>
-    <td>STS</td>
-    <td>Pearson’s Correlation</td>
-    <td>0.812</td>
-  </tr>
-  <tr>
-    <td>Experiment 3</td>
-    <td>Residual MLP (RIMLP)</td>
-    <td>SST</td>
-    <td>Accuracy</td>
-    <td>52.2%</td>
-  </tr>
-  <tr>
-    <td>Experiment 4</td>
-    <td>L2 Regularization (Lambda: 0.05)</td>
-    <td>SST</td>
-    <td>Accuracy</td>
-    <td>52.9%</td>
-  </tr>
-  <tr>
-    <td>Experiment 5</td>
-    <td>Autoencoder Backbone</td>
-    <td>SST</td>
-    <td>Accuracy</td>
-    <td>18.3%</td>
-  </tr>
-  <tr>
-    <td>Experiment 6</td>
-    <td>Focal Loss</td>
-    <td>SST</td>
-    <td>Accuracy</td>
-    <td>53%</td>
-  </tr>
-</table>
 
 <table>
   <tr>
