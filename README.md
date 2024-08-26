@@ -626,7 +626,7 @@ Below, we delve into the specific experiments, discussing their design, expectat
 </details>
 
 <details>
-<summary><h4>Experiment 1: Implementing Combined Loss Function Over Baseline BERT Model with Simple Linear Classifier Head</h4></summary>
+<summary><h4>Experiment 1: Combined Loss Function Over Baseline BERT Model with Simple Linear Classifier Head</h4></summary>
 
 This experiment involved implementing a combined loss function—comprising Binary Cross-Entropy (BCE) Loss, Cosine Embedding Loss, and Multiple Negatives Ranking Loss (MNRL)—over the baseline BERT model for the paraphrase detection task using the Quora dataset. The model's performance was evaluated based on its accuracy on the validation set after each training epoch.
 
@@ -654,7 +654,7 @@ While the combined loss function did improve the validation accuracy slightly, t
 </details>
 
 <details>
-<summary><h4>Experiment 2: Incorporating SMART Regularization with Combined Loss Function</h4></summary>
+<summary><h4>Experiment 2: SMART Regularization with Combined Loss Function</h4></summary>
 
 **What experiments are you executing? Don't forget to tell how you are evaluating things.**
 
@@ -685,7 +685,7 @@ The addition of SMART regularization led to a slight but consistent improvement 
 </details>
 
 <details>
-<summary><h4>Experiment 3:  Incorporating Mean Pooling with SMART Regularization and Combined Loss Function</h4></summary>
+<summary><h4>Experiment 3: Mean Pooling with SMART Regularization and Combined Loss Function</h4></summary>
 
 In this experiment, I incorporated a mean pooling strategy for sentence embeddings in addition to the SMART regularization and combined loss function used in Experiment 2. The objective was to determine whether averaging the token embeddings (mean pooling) could improve the model's ability to generalize better to unseen paraphrase pairs. The model's performance was evaluated on the validation set using accuracy as the primary metric.
 
@@ -714,7 +714,7 @@ The integration of mean pooling led to a slight improvement in validation accura
 </details>
 
 <details>
-<summary><h4>Experiment 4: Incorporating Self-Attention Pooling with SMART Regularization and Combined Loss Function</h4></summary>
+<summary><h4>Experiment 4: Self-Attention Pooling with SMART Regularization and Combined Loss Function</h4></summary>
 
 In this experiment, I incorporated a self-attention pooling mechanism for sentence embeddings, replacing the previous mean pooling method. The aim was to allow the model to dynamically weigh different parts of the sentence, potentially capturing more nuanced relationships within sentence pairs. This approach was combined with the SMART regularization and the same combined loss function used in the earlier experiments. The evaluation was based on the model's accuracy on the validation set.
 
@@ -743,7 +743,7 @@ The introduction of self-attention pooling led to a marginal improvement in vali
 </details>
 
 <details>
-<summary><h4>Experiment 5: Incorporating Early Stopping and OneCycleLR Scheduler with Self-Attention Pooling and SMART Regularization</h4></summary>
+<summary><h4>Experiment 5: Early Stopping and OneCycleLR Scheduler with Self-Attention Pooling and SMART Regularization</h4></summary>
 
 In this experiment, I introduced two new techniques: Early Stopping and the OneCycleLR learning rate scheduler. Early Stopping was used to prevent overfitting by halting training when the validation performance stopped improving, allowing us to extend the number of training epochs to 20. OneCycleLR was applied with a maximum learning rate of three times the initial learning rate to help the model converge more effectively. These additions were combined with the previously used self-attention pooling, SMART regularization, and combined loss function. The model’s performance was evaluated based on its accuracy on the validation set.
 
@@ -830,7 +830,7 @@ The introduction of the Multi-Head Attention layer provided a small performance 
 </details>
 
 <details>
-<summary><h4>Experiment 8: Incorporating Gradual Unfreezing with Custom Scheduler</h4></summary>
+<summary><h4>Experiment 8: Gradual Unfreezing with Custom Scheduler</h4></summary>
 
 In this experiment, I implemented a Gradual Unfreezing strategy using a custom scheduler (GradualUnfreezeScheduler) instead of the OneCycleLR scheduler. The main idea behind gradual unfreezing is to start with only the classifier layers being trained and gradually unfreeze and train the earlier layers of the BERT model as training progresses. This approach can help in stabilizing the training, especially in the early stages, and allow the model to focus on learning the classifier parameters first. The evaluation was conducted on the paraphrase detection task, using validation accuracy as the key metric.
 
