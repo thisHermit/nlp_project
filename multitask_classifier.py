@@ -14,6 +14,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+import warnings
+
 from bert import BertModel
 from datasets import (
     SentenceClassificationDataset,
@@ -24,7 +26,7 @@ from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import get_optimizer
 
 from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
-from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim.lr_scheduler import OneCycleLR, _LRScheduler
 
 TQDM_DISABLE = False
 
@@ -94,13 +96,42 @@ class MultiHeadAttentionLayer(nn.Module):
         
         # Return the output in the original shape (batch_size, seq_length, hidden_size)
         return attention_output.transpose(0, 1)
+
     
 # Default MHA Configuration
 mha_config = {
     'num_heads': 8,
     'dropout_prob': 0.3,
 }
-    
+
+class MLPHead(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, dropout_prob, num_layers=3):
+        super(MLPHead, self).__init__()
+        self.layers = nn.ModuleList()
+        self.residual_layers = nn.ModuleList()
+        dims = [input_dim] + [hidden_dim] * (num_layers - 1) + [output_dim]
+        
+        for i in range(num_layers):
+            self.layers.append(nn.Linear(dims[i], dims[i+1]))
+            if i < num_layers - 1:  # No activation or normalization after last layer
+                self.layers.append(nn.LayerNorm(dims[i+1]))
+                self.layers.append(nn.ReLU())
+                self.layers.append(nn.Dropout(dropout_prob))
+                
+                # Add residual connection if dimensions match
+                if dims[i] == dims[i+1]:
+                    self.residual_layers.append(nn.Identity())
+                else:
+                    self.residual_layers.append(nn.Linear(dims[i], dims[i+1]))
+
+    def forward(self, x):
+        residual = x
+        for i, layer in enumerate(self.layers):
+            x = layer(x)
+            if i % 4 == 3 and i < len(self.layers) - 1:  # After each block except the last
+                x = x + self.residual_layers[i // 4](residual)
+                residual = x
+        return x  
 
 class MultitaskBERT(nn.Module):
     """
@@ -120,11 +151,22 @@ class MultitaskBERT(nn.Module):
         self.bert = BertModel.from_pretrained(
             "bert-base-uncased", local_files_only=config.local_files_only
         )
+        
+        self.num_layers = len(self.bert.bert_layers)
+        
         for param in self.bert.parameters():
             if config.option == "pretrain":
                 param.requires_grad = False
             elif config.option == "finetune":
                 param.requires_grad = True
+        
+        if args.scheduler == 'gradual_unfreeze':
+            # Initialize layer freezing status
+            self.frozen_layers = [True] * self.num_layers
+        
+            # Freeze all layers initially
+            self.freeze_all_layers()
+            
                 
         self.pooling_type = args.pooling_type  # 'cls', 'mean', or 'max'
         if self.pooling_type == 'self_attention':
@@ -136,8 +178,13 @@ class MultitaskBERT(nn.Module):
             self.mha_layer = MultiHeadAttentionLayer(hidden_size=BERT_HIDDEN_SIZE, num_heads=mha_config['num_heads'], dropout_prob=mha_config['dropout_prob'])
         
         ### TODO
-        # a linear layer for paraphrase detection
-        self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
+        # MLP Head with Dropout and Residual Connections
+        # MLP Head with Dropout and Residual Connections
+        if args.use_mlp:
+            self.paraphrase_classifier = MLPHead(input_dim=BERT_HIDDEN_SIZE * 2, hidden_dim=BERT_HIDDEN_SIZE, output_dim=1, dropout_prob=0.3)
+        else:
+            self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
+        
         self.sts_head = nn.Sequential(
             nn.Linear(BERT_HIDDEN_SIZE * 2, BERT_HIDDEN_SIZE),
             nn.ReLU(),
@@ -177,8 +224,21 @@ class MultitaskBERT(nn.Module):
         # Here, you can start by just returning the embeddings straight from BERT.
         # When thinking of improvements, you can later try modifying this
         # (e.g., by adding other layers).
-        bert_output = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        return bert_output
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        if args.task == "qqp":
+            return bert_model
+            
+        output_layer = bert_model['last_hidden_state'][:, 0, :]
+        return output_layer
+        # ### TODO
+        # raise NotImplementedError
+        """Takes a batch of sentences and produces embeddings for them."""
+
+        # The final BERT embedding is the hidden state of [CLS] token (the first token).
+        # See BertModel.forward() for more details.
+        # Here, you can start by just returning the embeddings straight from BERT.
+        # When thinking of improvements, you can later try modifying this
+        # (e.g., by adding other layers).
         # ### TODO
         # raise NotImplementedError
         
@@ -305,7 +365,46 @@ class MultitaskBERT(nn.Module):
         smart_loss = self.smart_loss(torch.cat((embeddings1, embeddings2), dim=1), logits)
         total_loss = combined_loss + smart_loss
         return total_loss
+    
+    
+    def freeze_all_layers(self):
+        for param in self.bert.parameters():
+            param.requires_grad = False
+        self.frozen_layers = [True] * self.num_layers
+
+    def unfreeze_all_layers(self):
+        for param in self.bert.parameters():
+            param.requires_grad = True
+        self.frozen_layers = [False] * self.num_layers
+
+    def freeze_layer(self, layer_num):
+        if 0 <= layer_num < self.num_layers:
+            for param in self.bert.bert_layers[layer_num].parameters():
+                param.requires_grad = False
+            self.frozen_layers[layer_num] = True
+
+    def unfreeze_layer(self, layer_num):
+        if 0 <= layer_num < self.num_layers:
+            for param in self.bert.bert_layers[layer_num].parameters():
+                param.requires_grad = True
+            self.frozen_layers[layer_num] = False
+
+    def unfreeze_layers(self, num_layers):
+        for i in range(self.num_layers - num_layers, self.num_layers):
+            self.unfreeze_layer(i)
         
+        # Always unfreeze the pooler
+        for param in self.bert.pooler_dense.parameters():
+            param.requires_grad = True
+
+    def get_frozen_layers_count(self):
+        return sum(self.frozen_layers)
+
+    def print_frozen_status(self):
+        for i, frozen in enumerate(self.frozen_layers):
+            print(f"Layer {i}: {'Frozen' if frozen else 'Unfrozen'}")
+        # print(f"Pooler: {'Frozen' if next(self.bert.pooler_dense.parameters()).requires_grad == False else 'Unfrozen'}")
+        print(f"Pooler: {'Frozen' if not any(param.requires_grad for name, param in self.bert.named_parameters() if 'pooler' in name) else 'Unfrozen'}")
 
 
 def save_model(model, optimizer, args, config, filepath):
@@ -328,6 +427,53 @@ def save_model(model, optimizer, args, config, filepath):
 
     torch.save(save_info, filepath)
     print(f"Saving the model to {filepath}.")
+    
+
+class GradualUnfreezeScheduler(_LRScheduler):
+    def __init__(self, optimizer, model, total_epochs, freeze_epochs=0, thaw_epochs=0, initial_lr=1e-5, max_lr=2e-5, final_lr=1e-5, last_epoch=-1):
+        self.model = model
+        self.total_epochs = total_epochs
+        self.freeze_epochs = freeze_epochs
+        self.thaw_epochs = thaw_epochs
+        self.initial_lr = initial_lr
+        self.max_lr = max_lr
+        self.final_lr = final_lr
+        self.num_layers = model.num_layers
+        super(GradualUnfreezeScheduler, self).__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if not self._get_lr_called_within_step:
+            warnings.warn("To get the last learning rate computed by the scheduler, "
+                          "please use `get_last_lr()`.", UserWarning)
+
+        epoch = self.last_epoch + 1
+        
+        # Freezing phase
+        if epoch <= self.freeze_epochs:
+            self.model.freeze_all_layers()
+            return [self.initial_lr for _ in self.base_lrs]
+        
+        # Thawing phase
+        elif epoch <= self.freeze_epochs + self.thaw_epochs:
+            thaw_progress = (epoch - self.freeze_epochs) / self.thaw_epochs
+            layers_to_unfreeze = int(thaw_progress * self.num_layers)
+            self.model.unfreeze_layers(layers_to_unfreeze)
+            
+            lr_progress = thaw_progress * (self.max_lr - self.initial_lr) / self.initial_lr
+            return [self.initial_lr * (1 + lr_progress) for _ in self.base_lrs]
+        
+        # Fine-tuning phase
+        else:
+            self.model.unfreeze_all_layers()
+            remaining_epochs = self.total_epochs - (self.freeze_epochs + self.thaw_epochs)
+            fine_tune_progress = (epoch - (self.freeze_epochs + self.thaw_epochs)) / remaining_epochs
+            lr_decay = (self.max_lr - self.final_lr) * fine_tune_progress
+            return [self.max_lr - lr_decay for _ in self.base_lrs]
+
+    def step(self):
+        super().step()
+        self.model.print_frozen_status()
+        
     
 class EarlyStopping:
     def __init__(self, patience=3, verbose=True, delta=0, path='checkpoint.pt'):
@@ -352,10 +498,10 @@ class EarlyStopping:
         self.path = path
         self.dev_acc_max = float("-inf")
 
-    def __call__(self, dev_acc, model, epoch):
+    def __call__(self, dev_acc, model, epoch, optimizer, args, config):
         if self.best_score is None:
             self.best_score = dev_acc
-            self.save_checkpoint(dev_acc, model)
+            self.save_checkpoint(dev_acc, model, optimizer, args, config)
         elif dev_acc < self.best_score + self.delta:
             self.counter += 1
             if self.verbose:
@@ -364,15 +510,15 @@ class EarlyStopping:
                 self.early_stop = True
         else:
             self.best_score = dev_acc
-            self.save_checkpoint(dev_acc, model)
+            self.save_checkpoint(dev_acc, model, optimizer, args, config)
             self.counter = 0
             self.best_epoch = epoch
 
-    def save_checkpoint(self, dev_acc, model):
+    def save_checkpoint(self, dev_acc, model, optimizer, args, config):
         '''Saves model when dev accuracy increases.'''
         if self.verbose:
             print(f'Dev accuracy increased ({self.dev_acc_max:.6f} --> {dev_acc:.6f}).  Saving model ...')
-        torch.save(model.state_dict(), self.path)
+        save_model(model, optimizer, args, config, self.path)
         self.dev_acc_max = dev_acc
 
 
@@ -490,11 +636,24 @@ def train_multitask(args):
     optimizer_name = args.optimizer
     optimizer = get_optimizer(optimizer_name, params=model.parameters(), lr=lr)
     
-    # Define the OneCycleLR scheduler
-    max_lr = args.lr * 10  # Typically, OneCycleLR uses a max_lr 10 times the base lr
-    scheduler = OneCycleLR(optimizer, max_lr=max_lr, steps_per_epoch=len(quora_train_dataloader), epochs=args.epochs)
+    if args.scheduler == "onecycle":
+        # Define the OneCycleLR scheduler
+        max_lr = args.lr * 3
+        scheduler = OneCycleLR(optimizer, max_lr=max_lr, steps_per_epoch=len(quora_train_dataloader), epochs=args.epochs)
+    elif args.scheduler == "gradual_unfreeze":
+        scheduler = GradualUnfreezeScheduler(
+            optimizer, model, 
+            total_epochs=args.epochs, 
+            freeze_epochs=args.freeze_epochs, 
+            thaw_epochs=args.thaw_epochs,
+            initial_lr=args.initial_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr
+        )
+    
+    
     # Setup EarlyStopping
-    early_stopping = EarlyStopping(patience=4, verbose=True, path=args.filepath)
+    early_stopping = EarlyStopping(patience=3, verbose=True, path=args.filepath)
     
     best_dev_acc = float("-inf")
 
@@ -525,7 +684,6 @@ def train_multitask(args):
                 loss = F.cross_entropy(logits, b_labels.view(-1))
                 loss.backward()
                 optimizer.step()
-                scheduler.step()  # Update learning rate with OneCycleLR
 
                 train_loss += loss.item()
                 num_batches += 1
@@ -565,6 +723,7 @@ def train_multitask(args):
             # Trains the model on the qqp dataset
             ### TODO
             # Train the model on the Quora dataset (Paraphrase Detection)
+            
             for batch in tqdm(
                 quora_train_dataloader, desc=f"train-qqp-{epoch+1:02}", disable=TQDM_DISABLE
             ):
@@ -592,6 +751,8 @@ def train_multitask(args):
                 
                 loss.backward()
                 optimizer.step()
+                if args.scheduler == "onecycle":
+                    scheduler.step()
                 
                 train_loss += loss.item()
                 num_batches += 1
@@ -634,26 +795,37 @@ def train_multitask(args):
             "etpc": (etpc_train_acc, etpc_dev_acc),
             "multitask": (0, 0),  # TODO
         }[args.task]
+        
+        if args.scheduler=="gradual_unfreeze":
+            # Move scheduler step to the end of the epoch for gradual unfreezing
+            scheduler.step()
+            print(f"Epoch {epoch+1} completed. Current learning rate: {scheduler.get_last_lr()[0]}")
+            print(f"Frozen layers: {model.get_frozen_layers_count()} / {model.num_layers}")
 
         print(
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
         
-        # Check early stopping criteria
-        early_stopping(dev_acc, model, epoch)
-
-        if early_stopping.early_stop:
-            print("Early stopping triggered")
-            break
-
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
             save_model(model, optimizer, args, config, args.filepath)
+            print(f"New best model saved with dev accuracy: {best_dev_acc:.3f}")
+        
+        # Check early stopping criteria
+        early_stopping(dev_acc, model, epoch, optimizer, args, config)
+        if early_stopping.early_stop:
+            print("Early stopping triggered")
+            break
             
-    if early_stopping.best_epoch != epoch:
-        # After training loop ends, load the best model and save it as the final model
-        model.load_state_dict(torch.load(early_stopping.path))
+    # After training loop ends, ensure the best model according to EarlyStopping is loaded and saved
+    if early_stopping.best_score > best_dev_acc:
+        print(f"Early stopping model has better dev accuracy: {early_stopping.best_score:.3f} vs {best_dev_acc:.3f}")
+        model.load_state_dict(torch.load(early_stopping.path)["model_config"])
         save_model(model, optimizer, args, config, args.filepath)
+        print(f"Best model according to EarlyStopping reloaded and saved with dev accuracy: {early_stopping.best_score:.3f}")
+    else:
+        print(f"Best model already saved with dev accuracy: {best_dev_acc:.3f}")
+
 
 
 def test_model(args):
@@ -813,6 +985,14 @@ def get_args():
     )
     
     parser.add_argument("--use_mha", action="store_true", help="Use Multi-Head Attention in the Paraphrase Classifier")
+    parser.add_argument("--use_mlp", action="store_true", help="Use MLP Head in the Paraphrase Classifier")
+    
+    parser.add_argument("--scheduler", type=str, choices=["onecycle", "gradual_unfreeze", "None"], default="onecycle")
+    parser.add_argument("--freeze_epochs", type=int, default=1)
+    parser.add_argument("--thaw_epochs", type=int, default=2)
+    parser.add_argument("--initial_lr", type=float, default=1e-5)
+    parser.add_argument("--max_lr", type=float, default=3e-5)
+    parser.add_argument("--final_lr", type=float, default=1e-5)
     
     
     
