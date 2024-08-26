@@ -1412,19 +1412,6 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 </table>
 
 
-| **Sentiment Analysis**          |                                  |                    |                         |            |
-|---------------------------------|----------------------------------|--------------------|-------------------------|------------|
-| **Experiment**                  | **Best Model/Technique**         | **Dataset/Task**   | **Evaluation Metric**   | **Result** |
-| **Experiment 1**                | BERT Fine-Tuned                  | IMDB/SST           | Accuracy                | 93.8%/52.6%|
-| **Experiment 1**                | BERT Fine-Tuned                  | Tweets/SST         | Accuracy                | 61.6%/52.6%|
-| **Experiment 2**                | Multi-Task Fine-Tuning (SMART + Mnrl) | SST           | Accuracy                | 51%        |
-| **Experiment 2**                | Multi-Task Fine-Tuning (SMART + Mnrl) | STS           | Pearson’s Correlation   | 0.812      |
-| **Experiment 3**                | Residual MLP (RIMLP)             | SST                | Accuracy                | 52.2%      |
-| **Experiment 4**                | L2 Regularization (Lambda: 0.05) | SST                | Accuracy                | 52.9%      |
-| **Experiment 5**                | Autoencoder Backbone             | SST                | Accuracy                | 18.3%      |
-| **Experiment 6**                | Focal Loss                       | SST                | Accuracy                | 53%        |
-
-
 | **Quora Question Pairs (QQP)**               | **Dev Accuracy** |
 | -------------------------------------------- | ---------------- |
 | Baseline                                     | 77.10%           |
