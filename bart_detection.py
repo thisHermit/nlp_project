@@ -1,5 +1,6 @@
 import argparse
 import random
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -10,31 +11,89 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, BartModel
 from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
+from torch.optim.lr_scheduler import ExponentialLR
+import torch.nn.functional as F
+from smart_pytorch import SMARTLoss, sym_kl_loss
 
 
 TQDM_DISABLE = False
 
+class EarlyStopping:
+    "Function to stop the training early, if the validation loss doesn't improve after a predefined patience."
+    def __init__(self, checkpoint_path, patience=5, verbose=True, delta=0):
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+        self.model_checkpoint_path = checkpoint_path
+
+    def __call__(self, val_loss, model):
+
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score <= self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping Counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model):
+        '''Saves model when validation loss decrease.'''
+        if self.verbose:
+            print(f'Validation Loss/Score Decreased/Increased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), self.model_checkpoint_path)
+        self.val_loss_min = val_loss
+
 
 class BartWithClassifier(nn.Module):
-    def __init__(self, num_labels=7):
+    def __init__(self, latent_dims=7, num_labels=7):
         super(BartWithClassifier, self).__init__()
 
-        self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True)
+        self.bart = BartModel.from_pretrained("facebook/bart-large", local_files_only=True, add_cross_attention=True)
+        # self.pre_final = nn.Linear(self.bart.config.hidden_size, self.bart.config.hidden_size)
+        self.smart_loss = SMARTLoss(
+            eval_fn=self.eval_fn,
+            loss_fn=F.binary_cross_entropy_with_logits,
+            loss_last_fn=sym_kl_loss,
+            step_size=1e-3,
+            num_steps=1
+        )
+
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
-        self.sigmoid = nn.Sigmoid()
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
+
+    def eval_fn(self, embeds, attention_mask=None):
+        # use the BartModel to obtain the last hidden state
+        outputs = self.bart(inputs_embeds=embeds, attention_mask=attention_mask, decoder_inputs_embeds=embeds)
+        last_hidden_state = outputs.last_hidden_state
+        cls_output = last_hidden_state[:, 0, :]
+
+        out = self.classifier(cls_output)
+        return out
 
     def forward(self, input_ids, attention_mask=None):
-        # Use the BartModel to obtain the last hidden state
+        # use the BartModel to obtain the last hidden state
         outputs = self.bart(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = outputs.last_hidden_state
         cls_output = last_hidden_state[:, 0, :]
 
-        # Add an additional fully connected layer to obtain the logits
-        logits = self.classifier(cls_output)
+        out = self.classifier(cls_output) # add residual
 
-        # Return the probabilities
-        probabilities = self.sigmoid(logits)
-        return probabilities
+        return out
 
 
 def transform_data(dataset, args, max_length=512):
@@ -71,7 +130,16 @@ def transform_data(dataset, args, max_length=512):
     
     if 'paraphrase_types' in dataset.columns:
         labels = dataset['paraphrase_types'].apply(eval).tolist()
-        binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
+        if args.multi_label:
+            lbc1 = dataset['sentence1_segment_location'].apply(eval).tolist()
+            lbc2 = dataset['sentence2_segment_location'].apply(eval).tolist()
+            joined_lbcs = [l1 + l2 for l1, l2 in zip(lbc1, lbc2)]
+            binary_labels = []
+            for label in joined_lbcs:
+                counter = Counter(label)
+                binary_labels.append([counter[i + 1] // min(counter.values()) for i in range(7)])
+        else:
+            binary_labels = [[1 if (i + 1) in label else 0 for i in range(7)] for label in labels]
         labels_tensor = torch.tensor(binary_labels, dtype=torch.float32)
         
         data = TensorDataset(input_ids, attention_mask, labels_tensor)
@@ -83,7 +151,7 @@ def transform_data(dataset, args, max_length=512):
     return dataloader
 
 
-def train_model(model, train_data, dev_data, device, args):
+def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     """
     Train the model. You can use any training loop you want. We recommend starting with
     AdamW as your optimizer. You can take a look at the SST training loop for reference.
@@ -96,7 +164,10 @@ def train_model(model, train_data, dev_data, device, args):
     """
     model.train()
     optimizer = AdamW(model.parameters(), lr=2e-5)
-    criterion = nn.BCELoss() # since the target labels are binary
+    scheduler = ExponentialLR(optimizer, gamma=0.9)
+    criterion = nn.BCEWithLogitsLoss() if args.multi_label else nn.BCEWithLogitsLoss() # since the target labels are binary
+    #regularizer = SMARTLoss(eval_fn = model.eval, loss_fn = criterion)
+    
     num_epochs = args.epochs
 
     for epoch in range(num_epochs):
@@ -110,6 +181,9 @@ def train_model(model, train_data, dev_data, device, args):
             optimizer.zero_grad()
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
             loss = criterion(outputs, labels)
+            embeddings = model.bart.shared(input_ids)
+            smart_regularization = model.smart_loss(embeddings, outputs)
+            total_loss = loss + 0.02 * smart_regularization
             loss.backward()
             optimizer.step()
             
@@ -117,18 +191,24 @@ def train_model(model, train_data, dev_data, device, args):
             predicted_labels = (outputs > 0.5).float()
             correct_predictions += (predicted_labels == labels).float().sum().item()
             total_predictions += labels.numel()
+        
+        scheduler.step()
 
         avg_loss = total_loss / len(train_data)
         train_accuracy = correct_predictions / total_predictions
-        dev_accuracy = evaluate_model(model, dev_data, device)
-        dev_accuracy = evaluate_model(model, dev_data, device)
+        dev_accuracy, dev_matthews_coefficient = evaluate_model(model, dev_data, device)
+        total_train_accuracy, total_train_matthews_coefficient = evaluate_model(model, train_data, device)
 
         print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"Training Loss: {avg_loss:.4f}")
-        print(f"Training Accuracy: {train_accuracy:.4f}")
-        print(f"Validation Accuracy: {train_accuracy:.4f}")
-        print(f"Validation Accuracy: {dev_accuracy:.4f}")
+        print(f"Training step:\nLoss: {avg_loss:.4f}, Accuracy: {train_accuracy:.4f}")
+        print(f"Validation:\n Accuracy: {dev_accuracy} Matthews Coefficient: {dev_matthews_coefficient:.4f}")
+        print(f"Total Train:\n Accuracy: {total_train_accuracy} Matthews Coefficient: {total_train_matthews_coefficient:.4f}")
         print()
+        if early_stopping is not None:
+            early_stopping(-dev_matthews_coefficient, model)
+            if early_stopping.early_stop:
+                print("Early Stopping...")
+                break
 
     return model
 
@@ -226,6 +306,7 @@ def get_args():
     parser.add_argument("--checkpoint_file", type=str, default="bart_model.ckpt")
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--multi_label", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -249,12 +330,14 @@ def finetune_paraphrase_detection(args):
 
     print(f"Loaded {len(train_data)} training samples and {len(val_data)} validation samples.")
 
-    model = train_model(model, train_dataloader, val_dataloader, device, args)
+    early_stopping = EarlyStopping(args.checkpoint_file, patience=4)
+    model = train_model(model, train_dataloader, val_dataloader, device, args, early_stopping)
 
-    torch.save(model.state_dict(), args.checkpoint_file)
-    print(f"Training finished. Saved model at")
+    # torch.save(model.state_dict(), args.checkpoint_file)
+    print(f"Training finished. Saved model at {args.checkpoint_file}")
 
-    accuracy, matthews_corr = evaluate_model(model, train_data, device)
+    model.load_state_dict(torch.load(args.checkpoint_file))
+    accuracy, matthews_corr = evaluate_model(model, val_dataloader, device)
     print(f"The accuracy of the model is: {accuracy:.3f}")
     print(f"Matthews Correlation Coefficient of the model is: {matthews_corr:.3f}")
 
