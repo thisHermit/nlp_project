@@ -1342,7 +1342,6 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 
 ## Results
 
-Summarize all the results of your experiments in tables:
 
 | **Experiment**                  | **Best Model/Technique**           | **Dataset/Task**   | **Evaluation Metric** | **Result** |
 |---------------------------------|------------------------------------|--------------------|-----------------------|------------|
@@ -1367,12 +1366,6 @@ Summarize all the results of your experiments in tables:
 | +Multi-Head Attn Layer                       | 77.60%           |
 | +Gradual Unfreezing + retd. custom Scheduler | 77.80%           |
 
-| **Semantic Textual Similarity (STS)** | **Metric 1** | **Metric n** |
-| ------------------------------------- | ------------ | ------------ |
-| Baseline                              | 45.23%       | ...          |
-| Improvement 1                         | 58.56%       | ...          |
-| Improvement 2                         | 52.11%       | ...          |
-| ...                                   | ...          | ...          |
 
 | **Semantic Textual Similarity (STS)** | **Pearson's Correlation** |
 |---------------------------------------|-----------------------|
@@ -1412,7 +1405,7 @@ Summarize all the results of your experiments in tables:
 | Simultaneos training (exp6)         | 82.7%        | 0.058   |
 | Deep layers with Focal Loss (exp7)  | 82.6%        | 0.064   |
 
-| **Paraphrase Type Generation (PTG)** | **Penalized BLUE** |
+| **Paraphrase Type Generation (PTG)** | **Penalized BLEU** |
 | ------------------------------------ | ------------------ |
 | Baseline                             | 9.43               |
 | Cosine Embedding + Identity Loss     | 9.89               |
@@ -1500,5 +1493,6 @@ Write down all your references (other repositories, papers, etc.) that you used 
    - [Auto-Encoding Variational Bayes - arXiv](https://arxiv.org/abs/1312.6114)
 
 10. **Focal Loss for Dense Object Detection**
+    
    - Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2017). _Focal Loss for Dense Object Detection_. In Proceedings of the IEEE international conference on computer vision (pp. 2980-2988).
    - [Focal Loss for Dense Object Detection - arXiv](https://arxiv.org/abs/1708.02002)
