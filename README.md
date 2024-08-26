@@ -873,12 +873,19 @@ Summarize all the results of your experiments in tables:
 | Improvement 2                         | 52.11%       | ...          |
 | ...                                   | ...          | ...          |
 
-| **Quora Question Pairs (QQP)** | **Metric 1** | **Metric n** |
-| ------------------------------ | ------------ | ------------ |
-| Baseline                       | 45.23%       | ...          |
-| Improvement 1                  | 58.56%       | ...          |
-| Improvement 2                  | 52.11%       | ...          |
-| ...                            | ...          | ...          |
+| **Quora Question Pairs (QQP)**                | **Dev Accuracy** |
+| ------------------------------                | ------------     | 
+| Baseline                                      |   77.10%         | 
+| +Combined Loss Function                       |   77.20%         | 
+| +SMART Reg./ Loss                             |   77.50%         | 
+| +Mean Pooling                                 |   77.80%         |
+| +Self-Attn Pooling                            |   77.90%         |
+| +EarlyStop +OnceCycleLR                       |   78.20%         |
+| +MLP Head + Self-Attn Pooling                 |   77.90%         |
+| +Multi-Head Attn Layer                        |   77.60%         | 
+| +Gradual Unfreezing + retd. custom Scheduler  |   77.80%         |
+
+
 
 | **Semantic Textual Similarity (STS)** | **Metric 1** | **Metric n** |
 | ------------------------------------- | ------------ | ------------ |
