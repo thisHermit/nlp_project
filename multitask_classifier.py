@@ -47,7 +47,7 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-EXP_NAME = "COS_SIM"
+EXP_NAME = "COS_SIM_POOL_MEAN"
 
 class MultitaskBERT(nn.Module):
     """
@@ -73,6 +73,8 @@ class MultitaskBERT(nn.Module):
             elif config.option == "finetune":
                 param.requires_grad = True
 
+        self.attention_layer = nn.Linear(self.bert.config.hidden_size, 1)
+
         # a linear layer for paraphrase detection
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
         self.sentiment_linear = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
@@ -89,6 +91,28 @@ class MultitaskBERT(nn.Module):
         bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         output_layer = bert_model['last_hidden_state'][:, 0, :]
         return output_layer
+
+    def forward_mean(self, input_ids, attention_mask):
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        # Mean pooling over all token embeddings
+        pooled_output = torch.mean(bert_model['last_hidden_state'], dim=1)
+        return pooled_output
+
+    def forward_concat(self, input_ids, attention_mask):
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        mean_pooling = torch.mean(bert_model['last_hidden_state'], dim=1)
+        max_pooling, _ = torch.max(bert_model['last_hidden_state'], dim=1)
+        # Concatenate mean and max pooling
+        pooled_output = torch.cat((mean_pooling, max_pooling), dim=1)
+        return pooled_output
+
+    def forward_attention(self, input_ids, attention_mask):
+        bert_model = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        attention_weights = torch.nn.functional.softmax(bert_model['last_hidden_state'], dim=1)
+        pooled_output = torch.sum(attention_weights * bert_model['last_hidden_state'], dim=1)
+        return pooled_output
+
+
 
     def predict_sentiment(self, input_ids, attention_mask):
         """
@@ -129,8 +153,8 @@ class MultitaskBERT(nn.Module):
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         # Get both Embeddings
-        output_1 = self.forward(input_ids_1, attention_mask_1)
-        output_2 = self.forward(input_ids_2, attention_mask_2)
+        output_1 = self.forward_mean(input_ids_1, attention_mask_1)
+        output_2 = self.forward_mean(input_ids_2, attention_mask_2)
         
         # Compute cosine similarity between both sentence embeddings
         cos_sim = F.cosine_similarity(output_1, output_2)
