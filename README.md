@@ -33,11 +33,45 @@
 
 #### Setup
 
-This task uses only one external library `smart_pytorch`
+##### Base Setup
+
+Run the setup.sh file or alternatively run the commands below (replacing `<env_name>` with a suitable name.)
 
 ```bash
-pip install smart_pytorch
+conda create -n <env_name> python=3.10
+conda activate <env_name>
+
+# Check for CUDA and install appropriate PyTorch version
+if command -v nvidia-smi &>/dev/null; then
+    echo "CUDA detected, installing PyTorch with CUDA support."
+    conda install pytorch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 pytorch-cuda=12.1 -c pytorch -c nvidia
+else
+    echo "CUDA not detected, installing CPU-only PyTorch."
+    conda install pytorch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 cpuonly -c pytorch
+fi
+
+# Install additional packages
+conda install tqdm==4.66.2 requests==2.31.0 transformers==4.38.2 tensorboard==2.16.2 tokenizers==0.15.1 scikit-learn==1.5.1 -c conda-forge -c huggingface
+pip install explainaboard-client==0.1.4 sacrebleu==2.4.0 optuna==3.6.1 smart_pytorch==0.0.4
+
 ```
+
+This task uses 2 external libraries: `smart_pytorch` and `optuna`
+
+```bash
+pip install smart_pytorch optuna
+```
+
+<details>
+<summary>(Optionally) To reproduce the plots,</summary>
+Install the matplotlib library as well
+
+```bash
+conda activate dnlp
+conda install
+```
+
+</details>
 
 The model was trained and evaluated on the [Grete cluster provided by GWDG](https://gwdg.de/hpc/systems/grete/) on a single H100. To reproduce the experiments, the following command requests a H100 for 2 hours, which are sufficient to run each experiment independently.
 
@@ -234,12 +268,35 @@ After fine-tuning on PAWS, we used the resulting weights as the starting point f
 
 ### Paraphrase Type Generation
 
-All experiments for this task are evaulated using MCC.
+All experiments for this task are evaulated using MCC. Early stoppping is used within all experiments to use the model with the best Validation MCC. A train val split of 0.9 was used (since the dataset is not very large). Also all accuracy graphs begin at 0.7 (ie 70% accuracy). The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#Hyperparameter_Optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
 
-#### Experiment 1
+<details>
+<summary><h4>Experiment 1</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - I simply add a learning rate scheduler (ExponentialLR) and early stopping and add another fully connected linear layer.
+  - branch name: `ptd-exp2`
+- What were your expectations for this experiment?
+  - I expected an immediate increase in perfomance as I suspected that a learning rate scheduler would attempt to solve the overfitting observed while fine-tuning.
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - in terms of architecture, only a new layer was added on top.
+- What were the results?
+  - The dev accuracy and mcc are 78.4% and 0.057.
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+![accuracies](images/ptd-experiments/exp2.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp2.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - It was later noticed that there was no ReLU layer added between the linear layers at the end and therefore the 2 linear layers effectively collapsed to one. Therefore the results of this experiment are not mentioned in the table below.
+
+</details>
+
+<details>
+<summary><h4>Experiment 2</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - I use the decoder part of a VAE with skip connections to emulate a mixed effects model.
+  - branch name: `ptd-exp3`
 - What were your expectations for this experiment?
   - The latent parts of the vae model would capture some aspects of the classification space that would not be captured by a fully connected layer
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
@@ -247,11 +304,123 @@ All experiments for this task are evaulated using MCC.
 - What were the results?
   - The model performed sligthtly better with a mcc of 0.066.
 - Add relevant metrics and plots that describe the outcome of the experiment well.
-  ![train accuracy](images/ptd-experiments/exp2.txt-metrics.csvtotal_train_accuracy_vs_epoch.png)![dev accuracy](images/ptd-experiments/exp2.txt-metrics.csvvalidation_accuracy_vs_epoch.png)
 
-  ![train mcc](images/ptd-experiments/exp2.txt-metrics.csvtotal_train_matthews_coefficient_vs_epoch.png)![dev mcc](images/ptd-experiments/exp2.txt-metrics.csvvalidation_matthews_coefficient_vs_epoch.png)
+![accuracies](images/ptd-experiments/exp3.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp3.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - It is possible that the improvement in performance was completely due to random chance. Experiment 7 does hyperparameter optimization using the optuna package to verify this. The graphs show that the model very overfits to the data.
+
+</details>
+
+<details>
+<summary><h4>Experiment 3</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - I am adding smart loss to vae.
+  - branch name: `ptd-exp4`
+- What were your expectations for this experiment?
+  - The smart loss should prevent model from overfitting to the training data
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - it's the same as experiment 2 but with smart loss added on top
+- What were the results?
+  - xxxxxxxx
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+  GET THIS DATA AGAIN
+  ![accuracies](images/ptd-experiments/exp4.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp4.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+
+</details>
+
+<details>
+<summary><h4>Experiment 4</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - I am using the smart loss on the original architecture (single layer)
+  - branch name: `ptd-exp5`
+- What were your expectations for this experiment?
+  - The model should perform better than the baseline but still worse than the vae
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - I have added the smart loss to the existing loss
+- What were the results?
+  - This experiment provides the MCC yet, a MCC of 0.096
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+![accuracies](images/ptd-experiments/exp5.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp5.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - The metrics still diverge but the divergence is slower. There is a jump in epoch 7 but then it slows down again.
+
+</details>
+
+<details>
+<summary><h4>Experiment 5</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - I am running the simultaneous training experiment here. I am alternatively training the model on the
+  - branch name: `ptd-exp6`
+- What were your expectations for this experiment?
+  - since the model is training on two models simultaneously, I expected the metrics to be erractic but have positive (upward) trend
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - I have added another head to train for paraphrase detection and another data loading pipeline for paraphrase detection.
+- What were the results?
+  - The model performs slightly better than baseline with mcc of 0.081
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+![accuracies](images/ptd-experiments/exp6.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp6.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - The accuracy doesn't reflect the changing loss landscape but the mcc does. Even though this experiment didn't yield the best metric, it's likely that more epochs would improve it's performance (along with higher value for patience)
+
+</details>
+
+<details>
+<summary><h4>Experiment 6</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - Here I added 4 layers with ReLU and batch norm along with Focal Loss
+    - TODO: add code example here
+  - branch name: `ptd-exp7`
+- What were your expectations for this experiment?
+  - Focal loss would better solve the class imbalance observed and would result is less over fitting.
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - I have added more layers on the base model.
+- What were the results?
+  - The model performs marginally better with a MCC of 0.062.
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+![accuracies](images/ptd-experiments/exp7.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp7.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - The metrics follow each more closely than any other experiment and still diverge slowly. Further experiments with smart loss could give interesting results.
+
+</details>
+
+<details>
+<summary><h4>Experiment 7</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - Here, I am just running the [optuna](https://optuna.org/) library to find the best hyper-parameters.
+  - branch name: `ptd-exp8`
+- What were your expectations for this experiment?
+  - I expected the hyper-parameters to be similar but still significantly different.
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - No architecture change was done. The model from the branch `ptd-exp3` was used.
+- What were the results?
+  - The best hyper parameters were
+    - epochs: 32
+    - learning_rate: 9.793615889107144e-06
+    - scheduler_gamma: 0.9396559796851901
+    - latent_dims: 7
+    - patience: 5
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+  - NA
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - The hyper parameters for learning_rate, scheduler_gamma patience are quite similar while that for the epochs are different. Despite that, all experiments were run for 10 epochs so that the plots are comparable despite early stopping.
+
+</details>
 
 ## Results
 
