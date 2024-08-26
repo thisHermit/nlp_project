@@ -263,10 +263,6 @@ python3 gen_pngfier.py gen_exp3.txt-metrics.csv
 
 The methodology of all the different tasks is given below.
 
-## Smart Loss
-
-We implemented a "smart loss" function designed to weigh the importance of harder-to-classify examples during training. This approach aimed to mitigate the impact of class imbalance by dynamically adjusting the loss contribution based on the model's confidence in each prediction. By penalizing incorrect classifications more heavily, especially for underrepresented classes, we improved the model's ability to distinguish between paraphrase types.
-
 ## VAE
 
 We introduced a Variational Autoencoder (VAE) into our paraphrase type detection pipeline to capture the latent distributions of paraphrase types more effectively. The VAE component allowed the model to generate paraphrase representations that maintain both diversity and coherence, leading to better generalization across different paraphrase types.
@@ -277,7 +273,7 @@ There are random effects that come from the decoder part of the VAE and fixed ef
 
 ## Focal Loss
 
-To further address the issue of class imbalance, we experimented with focal loss, which down-weights easy-to-classify examples and focuses on harder ones. This modification was particularly useful in scenarios where certain paraphrase types were underrepresented in the training data, helping the model to learn more effectively from these challenging cases.
+To further address the issue of class imbalance, we experimented with focal loss, which down-weights easy-to-classify examples and focuses on harder ones. This modification is useful in scenarios where since labels 2, 6 and 7 are overrepresented, helping the model to learn more effectively from these challenging cases.
 
 ## Simultaneous Training
 
@@ -869,19 +865,17 @@ Summarize all the results of your experiments in tables:
 | Improvement 2                         | 52.11%       | ...          |
 | ...                                   | ...          | ...          |
 
-| **Quora Question Pairs (QQP)**                | **Dev Accuracy** |
-| ------------------------------                | ------------     | 
-| Baseline                                      |   77.10%         | 
-| +Combined Loss Function                       |   77.20%         | 
-| +SMART Reg./ Loss                             |   77.50%         | 
-| +Mean Pooling                                 |   77.80%         |
-| +Self-Attn Pooling                            |   77.90%         |
-| +EarlyStop +OnceCycleLR                       |   78.20%         |
-| +MLP Head + Self-Attn Pooling                 |   77.90%         |
-| +Multi-Head Attn Layer                        |   77.60%         | 
-| +Gradual Unfreezing + retd. custom Scheduler  |   77.80%         |
-
-
+| **Quora Question Pairs (QQP)**               | **Dev Accuracy** |
+| -------------------------------------------- | ---------------- |
+| Baseline                                     | 77.10%           |
+| +Combined Loss Function                      | 77.20%           |
+| +SMART Reg./ Loss                            | 77.50%           |
+| +Mean Pooling                                | 77.80%           |
+| +Self-Attn Pooling                           | 77.90%           |
+| +EarlyStop +OnceCycleLR                      | 78.20%           |
+| +MLP Head + Self-Attn Pooling                | 77.90%           |
+| +Multi-Head Attn Layer                       | 77.60%           |
+| +Gradual Unfreezing + retd. custom Scheduler | 77.80%           |
 
 | **Semantic Textual Similarity (STS)** | **Metric 1** | **Metric n** |
 | ------------------------------------- | ------------ | ------------ |
