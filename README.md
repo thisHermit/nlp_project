@@ -19,14 +19,6 @@
 
 # Setup instructions
 
-> Explain how we can run your code in this section. We should be able to reproduce the results you've obtained.
-
-> In addition, if you used libraries that were not included in the conda environment 'dnlp' explain the exact installation instructions or provide a `.sh` file for the installation.
-
-> Which files do we have to execute to train/evaluate your models? Write down the command which you used to execute the experiments. We should be able to reproduce the experiments/results.
-
-> _Hint_: At the end of the project you can set up a new environment and follow your setup instructions making sure they are sufficient and if you can reproduce your results.
-
 ## Base Setup
 
 Run the setup.sh file or alternatively run the commands below (replacing `<env_name>` with a suitable name.)
@@ -301,10 +293,6 @@ python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_
 
 # Methodology
 
-> In this section explain what and how you did your project.
-
-> If you are unsure how this is done, check any research paper. They all describe their methods/processes. Describe briefly the ideas that you implemented to improve the model. Make sure to indicate how are you using existing ideas and extending them. We should be able to understand your project's contribution.
-
 The methodology of all the different tasks is given below.
 
 ## VAE
@@ -384,25 +372,6 @@ Multi-Head Attention (MHA) enhances the model's ability to capture multiple pers
 Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incorporated a gradual unfreezing strategy during the fine-tuning process of our model. This method begins with all layers of the pre-trained BERT model frozen, and progressively unfreezes them over the course of training. The gradual unfreezing allows the model to adapt to the specific downstream task in a controlled manner, reducing the risk of catastrophic forgetting and ensuring that the model retains valuable general features learned during pre-training. This strategy balances leveraging pre-trained knowledge with the need to fine-tune the model effectively for the new task.
 
 # Experiments
-
-> Keep track of your experiments here. What are the experiments? Which tasks and models are you considering?
-
-> Write down all the main experiments and results you did, even if they didn't yield an improved performance. Bad results are also results. The main findings/trends should be discussed properly. Why a specific model was better/worse than the other?
-
-> You are **required** to implement one baseline and improvement per task. Of course, you can include more experiments/improvements and discuss them.
-
-> You are free to include other metrics in your evaluation to have a more complete discussion.
-
-> Be creative and ambitious.
-
-> For each experiment answer briefly the questions:
-
-> - What experiments are you executing? Don't forget to tell how you are evaluating things.
-> - What were your expectations for this experiment?
-> - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
-> - What were the results?
-> - Add relevant metrics and plots that describe the outcome of the experiment well.
-> - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
 
 ### Paraphrase Type Detection
 
@@ -702,6 +671,9 @@ The expectation was that the combined loss function would enhance the model’s 
 
 The key modification in this experiment was the introduction of the combined loss function, incorporating BCE, Cosine Embedding Loss, and MNRL. The architecture remained the same with a simple linear classifier head, but the loss calculation was more sophisticated than the baseline, which only used BCE.
 
+### Paraphrase Type Generation
+
+
 **Results**
 
 The experiment showed a minor improvement in the model’s validation accuracy, reaching 0.772 compared to the baseline 0.771. However, the training accuracy was significantly higher, suggesting the model was able to learn well on the training data but struggled to generalize as effectively to the validation set.
@@ -977,15 +949,8 @@ Notes:
 - \*_These metrics for the baseline were observed after attempting to confirm and reproduce the final results. The initial recording of these metrics were 82.1% accuracy and 0.069 mcc but they are not longer reproducible._
 - _For paraphrase type generation, the final dev scores are reported not the best ones. This is because the generation model doesn't implement early stopping._
 
-> Discuss your results, observations, correlations, etc.
-
-> Results should have three-digit precision.
 
 ### Hyperparameter Optimization
-
-> Describe briefly how you found your optimal hyperparameter. If you focussed strongly on Hyperparameter Optimization, you can also include it in the Experiment section.
-
-> _Note: Random parameter optimization with no motivation/discussion is not interesting and will be graded accordingly_
 
 #### Paraphrase Type Detection and Paraphrase Type Generation
 
@@ -1006,8 +971,6 @@ A patience value of 4 was used since larger values would never early stop (given
 All visulations are within their respective task and experiment.
 
 ## Members Contribution
-
-> Explain what member did what in the project:
 
 **Madkour, Khaled:** _implemented the training objective using X, Y, and Z. Supported member 2 in refactoring the code. Data cleaning, etc._
 
