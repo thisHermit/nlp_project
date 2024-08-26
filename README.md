@@ -918,13 +918,19 @@ Notes:
 
 > _Note: Random parameter optimization with no motivation/discussion is not interesting and will be graded accordingly_
 
-#### Paraphrase Type Detection
+#### Paraphrase Type Detection and Paraphrase Type Generation
 
-TODO
+##### Epochs:
 
-#### Paraphrase Type Generation
+10 epochs were chosen to strike a balance between learning enough while also making sure that the model isn't over-fitting.
 
-TODO
+##### Learning Rate:
+
+A learning rate of 2e-5 was empirically chosen since fine-tuning tasks need to prevent catastrophic forgetting while still learning. This was increased to 5e-5 in Paraphrase Type generation as the learning there was observed to be slower.
+
+#### Patience:
+
+A patience value of 4 was used since larger values would never early stop (given 10 epochs) and a lower value of 3 would early stop quite often.
 
 ## Visualizations
 
