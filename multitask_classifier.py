@@ -23,7 +23,6 @@ from datasets import (
 from evaluation import model_eval_multitask, test_model_multitask
 from optimizer import AdamW
 from losses import FocalLoss, DiceLoss
-
 TQDM_DISABLE = False
 
 # Function to select a subset
@@ -58,7 +57,7 @@ LABELSMOOTHING = 0.0
 # loss function
 # CrossEntropyLoss (cel), FocalLoss (fl), Hinge Loss (Multi-Class SVM) (hl),
 # Mean Squared Error (MSE) for Soft Labels (mse), Dice Loss (Soft Dice Loss) (dl).
-LOSS = "dl"
+LOSS = "fl"
 
 class MultitaskBERT(nn.Module):
     """
@@ -170,15 +169,48 @@ class MultitaskBERT(nn.Module):
         it will be handled as a logit by the appropriate loss function.
         Dataset: STS
         """
-        # print(input_ids_1)
+        # Get both Embeddings
         output_1 = self.forward(input_ids_1, attention_mask_1)
         output_2 = self.forward(input_ids_2, attention_mask_2)
-        # print(output_1)
-        combined_output = torch.cat([output_1, output_2], dim=1)
-        similarity_score = self.sts_head(combined_output).squeeze(1)
-        return similarity_score
-        # ### TODO
-        # raise NotImplementedError
+        
+        # Compute cosine similarity between both sentence embeddings
+        cos_sim = F.cosine_similarity(output_1, output_2)
+
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
+
+    def eval_fn(self,perturbed_embeddings_1,perturbed_embeddings_2):
+        # Compute cosine similarity between both sentence embeddings
+        cos_sim = F.cosine_similarity(perturbed_embeddings_1, perturbed_embeddings_2)
+
+        # Scale similarity to match labels between [0,5]
+        logit = (cos_sim + 1) * 2.5
+        return logit
+    
+    def get_embeddings(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        output_1 = self.forward(input_ids_1, attention_mask_1)
+        output_2 = self.forward(input_ids_2, attention_mask_2)
+        
+        return output_1,output_2#    
+
+    def compute_multiple_negatives_ranking_loss(self, embeddings_1, embeddings_2):
+        # Normalize the embeddings to unit vectors
+        embeddings_1 = F.normalize(embeddings_1, p=2, dim=1)
+        embeddings_2 = F.normalize(embeddings_2, p=2, dim=1)
+
+        # Compute cosine similarity matrix between the two sets of embeddings
+        sim_mat = torch.matmul(embeddings_1, embeddings_2.T)
+
+        # Apply softmax to similarity matrix (to ensure it's positive)
+        sim_mat = sim_mat * 20.0  # Optional scaling factor (as in the original repo)
+        labels = torch.arange(sim_mat.size(0)).to(embeddings_1.device)
+
+        # Compute the cross-entropy loss
+        loss = F.cross_entropy(sim_mat, labels)
+
+        return loss
+    
 
     def predict_paraphrase_types(
         self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2
@@ -192,6 +224,27 @@ class MultitaskBERT(nn.Module):
         """
         ### TODO
         raise NotImplementedError
+
+def inf_norm(x):
+    return torch.norm(x, p=2, dim=-1, keepdim=True)
+
+def smart_loss(model, embeddings_1,embeddings_2, logits, epsilon=1e-3):
+    # Generate perturbed embeddings
+    embed_norm_1= inf_norm(embeddings_1 )
+    noise_1 = torch.randn_like(embeddings_1) * epsilon * embed_norm_1
+    perturbed_embeddings_1 = embeddings_1 + noise_1
+
+    embed_norm_2 = inf_norm(embeddings_2)
+    noise_2 = torch.randn_like(embeddings_2) * epsilon * embed_norm_2
+    perturbed_embeddings_2 = embeddings_2 + noise_2
+
+    # Get predictions for perturbed embeddings
+    perturbed_logits = model.eval_fn(perturbed_embeddings_1,perturbed_embeddings_2)
+
+    # Compute KL divergence
+    kl_div = nn.KLDivLoss(reduction="batchmean")
+
+    return kl_div(F.log_softmax(perturbed_logits, dim=-1), F.softmax(logits, dim=-1))
 
 
 def save_model(model, optimizer, args, config, filepath):
@@ -240,7 +293,7 @@ def train_multitask(args):
     etpc_dev_dataloader = None
 
     # SST dataset
-    if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
+    if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment" or args.task == "sas":
         sst_train_data = SentenceClassificationDataset(sst_train_data, args)
         sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
 
@@ -303,7 +356,7 @@ def train_multitask(args):
         )
     
     # STS dataset
-    if args.task == "sts" or args.task == "multitask":
+    if args.task == "sts" or args.task == "multitask" or args.task == "sas":
         sts_train_data = SentencePairDataset(sts_train_data, args)
         sts_dev_data = SentencePairDataset(sts_dev_data, args)
 
@@ -358,7 +411,7 @@ def train_multitask(args):
         train_loss = 0
         num_batches = 0
 
-        if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment":
+        if args.task == "sst" or args.task == "multitask" or args.task == "multi-sentiment" or args.task == "sas":
             # Train the model on the sst dataset.
 
             for batch in tqdm(
@@ -431,7 +484,7 @@ def train_multitask(args):
                 train_loss += loss.item()
                 num_batches += 1
 
-        if args.task == "sts" or args.task == "multitask":
+        if args.task == "sts" or args.task == "multitask" or args.task == "sas":
             # Trains the model on the sts dataset
             for batch in tqdm(
                 sts_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
@@ -451,8 +504,19 @@ def train_multitask(args):
                 labels = labels.to(device)
 
                 optimizer.zero_grad()
-                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-                loss = F.mse_loss(logits, labels.float())
+
+                logits = model.predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)                
+                mse_loss = F.mse_loss(logits, labels.float())
+
+                # Get embeddings from the model for SMART loss computation
+                embeddings_1,embeddings_2 = model.get_embeddings(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+                s_loss = smart_loss(model , embeddings_1, embeddings_2, logits)
+
+                # mnrl loss
+                ranking_loss = model.compute_multiple_negatives_ranking_loss(embeddings_1,embeddings_2)
+                loss = ranking_loss + 0.02 * s_loss + mse_loss
+
+                # Backpropagation and optimization step
                 loss.backward()
                 optimizer.step()
 
@@ -533,6 +597,7 @@ def train_multitask(args):
             "qqp": (quora_train_acc, quora_dev_acc),
             "etpc": (etpc_train_acc, etpc_dev_acc),
             "multi-sentiment": (sst_train_acc, sst_dev_acc),  
+            "sas": (sst_train_acc, sst_dev_acc),  
             "multitask": (0, 0),  # TODO
         }[args.task]
 
@@ -569,8 +634,8 @@ def get_args():
     parser.add_argument(
         "--task",
         type=str,
-        help='choose between "sst","sts","qqp","etpc", "tweets", "multitask" to train for different tasks ',
-        choices=("sst", "sts", "qqp", "etpc", "multitask", "tweets", "multi-sentiment"),
+        help='choose between "sst","sts","qqp","etpc", "tweets", "sas", "multitask" to train for different tasks ',
+        choices=("sst", "sts", "qqp", "etpc", "multitask", "tweets", "multi-sentiment", "sas"),
         default="sst",
     )
 

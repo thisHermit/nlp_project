@@ -77,7 +77,7 @@ def model_eval_multitask(
         sts_sent_ids = []
 
         # Evaluate semantic textual similarity.
-        if task == "sts" or task == "multitask":
+        if task == "sts" or task == "multitask" or task == "sas":
             for step, batch in enumerate(tqdm(sts_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_labels, b_sent_ids) = (
                     batch["token_ids_1"],
@@ -101,7 +101,7 @@ def model_eval_multitask(
                 sts_y_true.extend(b_labels)
                 sts_sent_ids.extend(b_sent_ids)
 
-        if task == "sts" or task == "multitask":
+        if task == "sts" or task == "multitask" or task == "sas":
             pearson_mat = np.corrcoef(sts_y_pred, sts_y_true)
             sts_corr = pearson_mat[1][0]
         else:
@@ -112,7 +112,7 @@ def model_eval_multitask(
         sst_sent_ids = []
 
         # Evaluate sentiment classification.
-        if task == "sst" or task == "multitask" or task == "multi-sentiment":
+        if task == "sst" or task == "multitask" or task == "multi-sentiment" or task == "sas":
             for step, batch in enumerate(tqdm(sst_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_labels, b_sent_ids = (
                     batch["token_ids"],
@@ -132,7 +132,7 @@ def model_eval_multitask(
                 sst_y_true.extend(b_labels)
                 sst_sent_ids.extend(b_sent_ids)
 
-        if task == "sst" or task == "multitask" or task == "multi-sentiment":
+        if task == "sst" or task == "multitask" or task == "multi-sentiment" or task == "sas":
             sst_accuracy = np.mean(np.array(sst_y_pred) == np.array(sst_y_true))
         else:
             sst_accuracy = None
@@ -207,11 +207,11 @@ def model_eval_multitask(
 
         if task == "qqp" or task == "multitask":
             print(f"Paraphrase detection accuracy: {quora_accuracy:.3f}")
-        if task == "sst" or task == "multitask":
+        if task == "sst" or task == "multitask" or task == "sas":
             print(f"Sentiment classification accuracy: {sst_accuracy:.3f}")
         if task == "tweets" or task == "multitask":
             print(f"Sentiment classification accuracy: {tweets_accuracy:.3f}")
-        if task == "sts" or task == "multitask":
+        if task == "sts" or task == "multitask" or task == "sas":
             print(f"Semantic Textual Similarity correlation: {sts_corr:.3f}")
         if task == "etpc" or task == "multitask":
             print(f"Paraphrase Type detection accuracy: {etpc_accuracy:.3f}")
@@ -272,7 +272,7 @@ def model_eval_test_multitask(
         sts_sent_ids = []
 
         # Evaluate semantic textual similarity.
-        if task == "sts" or task == "multitask":
+        if task == "sts" or task == "multitask" or task == "sas":
             for step, batch in enumerate(tqdm(sts_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 (b_ids1, b_mask1, b_ids2, b_mask2, b_sent_ids) = (
                     batch["token_ids_1"],
@@ -297,7 +297,7 @@ def model_eval_test_multitask(
         sst_sent_ids = []
 
         # Evaluate sentiment classification.
-        if task == "sst" or task == "multitask" or task == "multi-sentiment":
+        if task == "sst" or task == "multitask" or task == "multi-sentiment" or task == "sas":
             for step, batch in enumerate(tqdm(sst_dataloader, desc="eval", disable=TQDM_DISABLE)):
                 b_ids, b_mask, b_sent_ids = (
                     batch["token_ids"],
@@ -496,7 +496,7 @@ def test_model_multitask(args, model, device):
         task,
     )
 
-    if task == "sst" or task == "multitask" or task == "multi-sentiment":
+    if task == "sst" or task == "multitask" or task == "multi-sentiment" or task == "sas":
         with open(args.sst_dev_out, "w+") as f:
             print(f"dev sentiment acc :: {dev_sst_accuracy :.3f}")
             f.write("id,Predicted_Sentiment\n")
@@ -532,7 +532,7 @@ def test_model_multitask(args, model, device):
             for p, s in zip(test_quora_sent_ids, test_quora_y_pred):
                 f.write(f"{p}\t{s}\n")
 
-    if task == "sts" or task == "multitask":
+    if task == "sts" or task == "multitask" or task == "sas":
         with open(args.sts_dev_out, "w+") as f:
             print(f"dev sts corr :: {dev_sts_corr :.3f}")
             f.write("id,Predicted_Similarity\n")
