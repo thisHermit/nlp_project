@@ -1110,8 +1110,10 @@ change the following constants in **multitask_calssifier.py**
 | Label Smoothing (Factor: 0.1) | Accuracy              | 52.3%      |
 
 </details>
+
 <details>
 <summary><h4>**Experiment 5: Using Autoencoder as a Backbone After BERT**</h4></summary>
+  
    - **Description**: In this experiment, I utilized an autoencoder as a backbone after the BERT model to reconstruct the embeddings produced by BERT. The goal was to improve the quality of embeddings and subsequently enhance sentiment classification performance.
    - **Autoencoder Architecture**:
      - **Encoder**:
