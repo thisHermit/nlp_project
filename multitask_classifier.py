@@ -330,6 +330,18 @@ def train_multitask(args):
                 num_batches += 1
 
         if args.task == "sts" or args.task == "multitask":
+            saved = torch.load('/user/khaled.madkour/u11457/latest/nlp_project/models/finetune-20-1e-05-qqp.pt')
+            config = saved["model_config"]
+            state_dict = saved['model']
+            model = MultitaskBERT(config)
+            model_dict = model.state_dict()
+            pretrained_dict = {k: v for k, v in state_dict.items() if k in model_dict}
+            model_dict.update(pretrained_dict)
+            model.load_state_dict(model_dict)
+            # model.load_state_dict()
+            model = model.to(device)
+            print(f"Loaded model to test from {'/models/finetune-20-1e-05-qqp.pt'}")
+
             # Trains the model on the sts dataset
             for batch in tqdm(
                 sts_train_dataloader, desc=f"train-{epoch+1:02}", disable=TQDM_DISABLE
