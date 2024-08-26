@@ -278,7 +278,7 @@ python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_
 - `--use_mlp`: Enables the usage of an MLP Head in the paraphrase classifier.
 
 ##### Configurable Options
-- **Optimizer**: The default optimizer used is Sophia. You can switch to Adam by setting --optimizer adam.
+- **Optimizer**: The default optimizer used is Sophia. You can switch to Adam by setting `--optimizer adam`.
 
 ```bash
 
