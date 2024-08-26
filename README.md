@@ -613,7 +613,7 @@ Experiment 4 returns the best mcc while simultaneous training solves the problem
 
 ### Paraphrase Type Generation
 
-- All experiments for this task are evaluated using the Penalized BLUE Score.
+- All experiments for this task are evaluated using the Penalized BLEU Score.
 - A train val split of 0.9 was used (since the dataset is not very large).
 - The default loss function is Negative log likelihood and the other mentioned in the experiment below are added to it.
 - The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization).
