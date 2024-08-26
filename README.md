@@ -56,10 +56,10 @@ pip install explainaboard-client==0.1.4 sacrebleu==2.4.0 optuna==3.6.1 smart_pyt
 
 ```
 
-This task uses 2 external libraries: `smart_pytorch` and `optuna`
+In case the packages above are already installed, use the command below. This task uses 3 external libraries: `smart_pytorch`, `optuna` and `matplotlib`.
 
 ```bash
-pip install smart_pytorch optuna
+pip install smart_pytorch optuna matplotlib
 ```
 
 <details>
@@ -112,8 +112,8 @@ python3 bart_detection.py --use_gpu # run the experiment
 git checkout ptd-exp1
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp1.txt 2>&1
-mv exp1.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp1.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp1.txt
 python3 better_pngfier.py exp1.txt-metrics.csv
 ```
@@ -124,8 +124,8 @@ python3 better_pngfier.py exp1.txt-metrics.csv
 git checkout ptd-exp2
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp2.txt 2>&1
-mv exp2.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp2.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp2.txt
 python3 better_pngfier.py exp2.txt-metrics.csv
 ```
@@ -136,8 +136,8 @@ python3 better_pngfier.py exp2.txt-metrics.csv
 git checkout ptd-exp3
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp3.txt 2>&1
-mv exp3.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp3.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp3.txt
 python3 better_pngfier.py exp3.txt-metrics.csv
 ```
@@ -148,8 +148,8 @@ python3 better_pngfier.py exp3.txt-metrics.csv
 git checkout ptd-exp4
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp4.txt 2>&1
-mv exp4.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp4.txt images/ptd-experimentss
+cd images/ptd-experimentss
 python3 csvfier.py exp4.txt
 python3 better_pngfier.py exp4.txt-metrics.csv
 ```
@@ -160,8 +160,8 @@ python3 better_pngfier.py exp4.txt-metrics.csv
 git checkout ptd-exp5
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp5.txt 2>&1
-mv exp5.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp5.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp5.txt
 python3 better_pngfier.py exp5.txt-metrics.csv
 ```
@@ -172,8 +172,8 @@ python3 better_pngfier.py exp5.txt-metrics.csv
 git checkout ptd-exp6
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp6.txt 2>&1
-mv exp6.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp6.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp6.txt
 python3 better_pngfier.py exp6.txt-metrics.csv
 ```
@@ -184,8 +184,8 @@ python3 better_pngfier.py exp6.txt-metrics.csv
 git checkout ptd-exp7
 conda activate dnlp
 python3 bart_detection.py --use_gpu > exp7.txt 2>&1
-mv exp7.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp7.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp7.txt
 python3 better_pngfier.py exp7.txt-metrics.csv
 ```
@@ -196,8 +196,8 @@ python3 better_pngfier.py exp7.txt-metrics.csv
 git checkout ptd-exp8
 conda activate dnlp
 python3 bart_detection.py --use_gpu --optuna_optim > exp8.txt 2>&1
-mv exp8.txt images/ptd-experiment
-cd images/ptd-experiment
+mv exp8.txt images/ptd-experiments
+cd images/ptd-experiments
 python3 csvfier.py exp8.txt
 python3 better_pngfier.py exp8.txt-metrics.csv
 ```
