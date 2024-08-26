@@ -372,7 +372,9 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 <details>
 <summary><h4>Experiment 0: Baselline</h4></summary>
 
-![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)  
+![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+
+These are the results of the baseline, where we simply use a linear layer on top of BART model for classification.
 </details>
 
 <details>
@@ -554,6 +556,8 @@ Experiment 4 returns the best mcc while simultaneous training solves the problem
 <summary><h4>Experiment 0: Baselline</h4></summary>
 
 ![generation baseline](images/ptg-experiments/e0_gen.txt-metrics.csv_scores_vs_epoch.png)
+
+These are the results of the baseline, where we simply use a linear layer on top of BART model for text generation.
 
 </details>
 
