@@ -349,7 +349,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 - The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
 
 <details>
-<summary><h4>Experiment 1</h4></summary>
+<summary><h4>Experiment 1: 2 layers with lr scheduler (not included)</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - I simply add a learning rate scheduler (ExponentialLR) and early stopping and add another fully connected linear layer.
@@ -365,12 +365,12 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 ![accuracies](images/ptd-experiments/exp2.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp2.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
-  - It was later noticed that there was no ReLU layer added between the linear layers at the end and therefore the 2 linear layers effectively collapsed to one. Therefore the results of this experiment are not mentioned in the table below.
+  - It was later noticed that there was no ReLU layer added between the linear layers at the end and therefore the 2 linear layers effectively collapsed to one, and therefore not significantly different from the baseline. Therefore the results of this experiment are not mentioned in the table below.
 
 </details>
 
 <details>
-<summary><h4>Experiment 2</h4></summary>
+<summary><h4>Experiment 2: VAE</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - I use the decoder part of a VAE with skip connections to emulate a mixed effects model.
@@ -391,7 +391,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 3</h4></summary>
+<summary><h4>Experiment 3: VAE + smart loss</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - I am adding smart loss to vae.
@@ -411,7 +411,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 4</h4></summary>
+<summary><h4>Experiment 4: Smart loss</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - I am using the smart loss on the original architecture (single layer)
@@ -432,7 +432,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 5</h4></summary>
+<summary><h4>Experiment 5: Simultaneos training</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - I am running the simultaneous training experiment here. I am alternatively training the model on the
@@ -453,7 +453,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 6</h4></summary>
+<summary><h4>Experiment 6: Deep layers with Focal Loss</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - Here I added 4 layers with ReLU and batch norm along with Focal Loss. Each layers looks like the following (except the last one, which is a single linear layer)
@@ -482,7 +482,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 7</h4></summary>
+<summary><h4>Experiment 7: Optuna Hyperparam tuning</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - Here, I am just running the [optuna](https://optuna.org/) library to find the best hyper-parameters.
@@ -515,7 +515,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 - The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization).
 
 <details>
-<summary><h4>Experiment 1</h4></summary>
+<summary><h4>Experiment 1: Cosine Embedding + Identity Loss</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - We use a cosine embedding loss, and also later add [identity loss](#identity-loss). This identity loss was added because the generated output replicated the input many times. So the result is a combine loss
@@ -541,7 +541,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 2</h4></summary>
+<summary><h4>Experiment 2: PAWS pre-train</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - Here we pre-train the model on the [paws dataset](#fine-tuning-bart-on-the-paws-dataset-for-paraphrase-type-generation) for 5 epochs (entries that have the label 1, ie true paraphrases) and .
@@ -562,7 +562,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 </details>
 
 <details>
-<summary><h4>Experiment 3</h4></summary>
+<summary><h4>Experiment 3: PAWS pre-train + Combined loss</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
   - We use the baseline model trained on paws (experiment 2) and then use the combined loss implemented in experiment 1.
@@ -578,6 +578,235 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
   - Our model performs quite well but suffers from overfitting. Next experiments could improve this by adding regularisation.
+
+</details>
+
+### Quora Question Pairs
+
+In this section, we explore various experiments conducted to enhance the performance of our paraphrase detection model. The primary objective is to accurately identify whether pairs of sentences are paraphrases while ensuring the model is robust and generalizes well to unseen data. We experimented with several advanced techniques, including SMART regularization, multi-head attention, and different pooling strategies for embedding generation. Additionally, we adopted a gradual unfreezing strategy during fine-tuning, inspired by the ULMFiT approach, to mitigate overfitting and allow the model to adapt better to the paraphrase detection task.
+
+Throughout all experiments, we utilized the Sophia optimizer with its default hyperparameter settings, chosen for its ability to leverage second-order information, offering more precise learning rate adjustments that enhance stability, efficiency, and convergence speed during training. Each experiment was evaluated using the Quora Question Pairs (QQP) dataset, and the outcomes were assessed based on accuracy.
+
+Below, we delve into the specific experiments, discussing their design, expectations, results, and insights gained.
+
+<details>
+<summary><h4>Experiment 1: Implementing Combined Loss Function Over Baseline BERT Model with Simple Linear Classifier Head</h4></summary>
+
+This experiment involved implementing a combined loss function—comprising Binary Cross-Entropy (BCE) Loss, Cosine Embedding Loss, and Multiple Negatives Ranking Loss (MNRL)—over the baseline BERT model for the paraphrase detection task using the Quora dataset. The model's performance was evaluated based on its accuracy on the validation set after each training epoch.
+
+**Expectations for this experiment**
+
+The expectation was that the combined loss function would enhance the model’s capability to differentiate between paraphrases and non-paraphrases more effectively by leveraging both classification and embedding similarities, thus improving validation accuracy.
+
+**Changes compared to the previous experiment**
+
+The key modification in this experiment was the introduction of the combined loss function, incorporating BCE, Cosine Embedding Loss, and MNRL. The architecture remained the same with a simple linear classifier head, but the loss calculation was more sophisticated than the baseline, which only used BCE.
+
+**Results**
+
+The experiment showed a minor improvement in the model’s validation accuracy, reaching 0.772 compared to the baseline 0.771. However, the training accuracy was significantly higher, suggesting the model was able to learn well on the training data but struggled to generalize as effectively to the validation set.
+
+**Relevant Metrics and Visulaization.**
+
+The key metrics were the training and validation accuracies. By the end of the experiment, the training accuracy reached 0.951, while the validation accuracy plateaued at 0.772, indicating a potential overfitting issue.
+
+**Discussion of the results**
+While the combined loss function did improve the validation accuracy slightly, the significant gap between the training and validation accuracies points to overfitting. This suggests that while the model could capture complex patterns in the training data, it did not generalize well to unseen data. This outcome partly matched expectations—improvement was seen, but it highlighted the need for better regularization techniques or adjustments to the model to prevent overfitting. The trend suggests that the model may benefit from techniques like early stopping, dropout, or SMART regularization to improve generalization.
+
+</details>
+
+<details>
+<summary><h4>Experiment 2: Incorporating SMART Regularization with Combined Loss Function</h4></summary>
+
+**What experiments are you executing? Don't forget to tell how you are evaluating things.**
+
+In this experiment, I incorporated SMART (Smoothness-Inducing Adversarial Regularization Training) alongside the combined loss function (Binary Cross-Entropy Loss, Cosine Embedding Loss, and Multiple Negatives Ranking Loss) used in Experiment 1. The objective was to assess whether SMART could enhance the model's generalization and further improve validation accuracy. The model was evaluated based on its performance on the validation set of the paraphrase detection task.
+
+**Expectations for this experiment**
+
+I expected SMART regularization to reduce the overfitting observed in Experiment 1, leading to a smaller gap between training and validation accuracies. Additionally, I anticipated that this would result in a higher validation accuracy compared to Experiment 1, due to better generalization to unseen data.
+
+**Changes compared to the previous experiment**
+
+The primary change from Experiment 1 was the addition of SMART regularization. This was layered on top of the combined loss function without altering other aspects of the model or training process, allowing for a clear assessment of SMART's impact.
+
+**Results**
+
+The model with SMART regularization achieved a validation accuracy of 0.775, which is an improvement from the 0.772 obtained in Experiment 1. The training accuracy increased more moderately to 0.839 by the end of training, indicating that SMART successfully curbed overfitting while slightly boosting generalization.
+
+**Relevant Metrics and Visualization**
+
+By the end of the experiment, the model had a training accuracy of 0.839 and a validation accuracy of 0.775. The continuous increase in validation accuracy up to epoch 10, with the final accuracy at 0.775, suggests that the model benefitted from the regularization provided by SMART.
+
+**Discussion of the results**
+
+The addition of SMART regularization led to a slight but consistent improvement in validation accuracy, from 0.772 in Experiment 1 to 0.775 in this experiment. This outcome is consistent with expectations, as SMART is designed to reduce overfitting, which was a concern in Experiment 1. The results suggest that while SMART regularization contributes to better generalization, the improvement is incremental, indicating that further enhancements or adjustments in hyperparameters may be necessary for more significant gains. The trend of increasing validation accuracy suggests that SMART was effective, but the diminishing returns in later epochs also point to a potential limit in its impact when used in isolation.
+
+</details>
+
+<details>
+<summary><h4>Experiment 3:  Incorporating Mean Pooling with SMART Regularization and Combined Loss Function</h4></summary>
+
+In this experiment, I incorporated a mean pooling strategy for sentence embeddings in addition to the SMART regularization and combined loss function used in Experiment 2. The objective was to determine whether averaging the token embeddings (mean pooling) could improve the model's ability to generalize better to unseen paraphrase pairs. The model's performance was evaluated on the validation set using accuracy as the primary metric.
+
+**Expectations for this experiment**
+
+I expected that the mean pooling strategy would provide a more robust representation of sentences, capturing more contextual information compared to using only the [CLS] token embedding. This could potentially lead to better paraphrase detection performance, particularly in scenarios where important information is spread throughout the sentence rather than being concentrated at the beginning.
+
+**Changes compared to the previous experiment**
+
+The key modification in this experiment was the use of mean pooling for sentence embeddings instead of solely relying on the [CLS] token. This change was layered on top of the SMART regularization and combined loss function approach used in Experiment 2.
+
+**Results**
+
+The experiment concluded with a validation accuracy of 0.778, an improvement over the 0.775 accuracy achieved in Experiment 2. The final training accuracy reached 0.864, indicating continued strong performance on the training set, but the improvement in validation accuracy suggests that mean pooling helped in generalizing better to the validation data.
+
+**Relevant Metrics and Visualization**
+
+The model achieved a final validation accuracy of 0.778, with a corresponding training accuracy of 0.864 by epoch 10. This improvement over Experiment 2 suggests that mean pooling contributed to better sentence representation and, consequently, better performance on the paraphrase detection task.
+
+**Discussion of the results**
+
+The integration of mean pooling led to a slight improvement in validation accuracy, which suggests that this pooling method provided a more comprehensive representation of sentence meaning, enhancing the model's ability to detect paraphrases. The results align with the expectations that mean pooling would capture more contextual information from the entire sentence, leading to better generalization. However, the modest increase in performance also indicates that while mean pooling helps, it may not be a transformative change on its own, but rather a beneficial adjustment that, when combined with other improvements, contributes to incremental gains. The training accuracy remained high, but the gap between training and validation accuracy indicates that overfitting is still a concern, albeit slightly mitigated compared to earlier experiments.
+
+</details>
+
+<details>
+<summary><h4>Experiment 4: Incorporating Self-Attention Pooling with SMART Regularization and Combined Loss Function</h4></summary>
+
+In this experiment, I incorporated a self-attention pooling mechanism for sentence embeddings, replacing the previous mean pooling method. The aim was to allow the model to dynamically weigh different parts of the sentence, potentially capturing more nuanced relationships within sentence pairs. This approach was combined with the SMART regularization and the same combined loss function used in the earlier experiments. The evaluation was based on the model's accuracy on the validation set.
+
+**Expectations for this experiment**
+
+I expected that self-attention pooling would provide a more context-aware representation of sentences, leading to better paraphrase detection by allowing the model to focus on the most relevant parts of each sentence. This could enhance the model's ability to discern subtle paraphrasing nuances, leading to improved performance on the validation set.
+
+**Changes compared to the previous experiment**
+
+The key modification in this experiment was the use of self-attention pooling for sentence embeddings, replacing the mean pooling strategy from Experiment 3. This was built on top of the SMART regularization and combined loss function from the previous experiments.
+
+**Results**
+
+The experiment concluded with a validation accuracy of 0.779, marking a slight improvement over the 0.778 accuracy achieved in Experiment 3. The final training accuracy was 0.867, indicating continued strong performance on the training set. The results suggest that self-attention pooling did provide some benefit, albeit modest, in terms of validation accuracy.
+
+**Relevant Metrics and Visualization**
+
+The model reached a final validation accuracy of 0.779, with a corresponding training accuracy of 0.867 by epoch 10. The consistent improvement in validation accuracy throughout the training epochs highlights the potential of self-attention pooling in enhancing the model's ability to generalize to unseen data.
+
+**Discussion of the results**
+
+The introduction of self-attention pooling led to a marginal improvement in validation accuracy, suggesting that the model benefited from the ability to focus on different parts of the sentence according to their relevance. This aligns with the expectations that self-attention pooling would allow the model to capture more nuanced sentence representations. However, the improvement was not substantial, indicating that while self-attention pooling is beneficial, its impact is relatively incremental when added on top of the existing SMART regularization and combined loss function. The gap between training and validation accuracy, while still present, was slightly reduced, suggesting a better generalization capability compared to previous experiments.
+
+</details>
+
+<details>
+<summary><h4>Experiment 5: Incorporating Early Stopping and OneCycleLR Scheduler with Self-Attention Pooling and SMART Regularization</h4></summary>
+
+In this experiment, I introduced two new techniques: Early Stopping and the OneCycleLR learning rate scheduler. Early Stopping was used to prevent overfitting by halting training when the validation performance stopped improving, allowing us to extend the number of training epochs to 20. OneCycleLR was applied with a maximum learning rate of three times the initial learning rate to help the model converge more effectively. These additions were combined with the previously used self-attention pooling, SMART regularization, and combined loss function. The model’s performance was evaluated based on its accuracy on the validation set.
+
+**Expectations for this experiment**
+
+I expected that Early Stopping would prevent the model from overfitting by stopping training at the optimal point, while OneCycleLR would allow the model to explore a wider range of learning rates, potentially leading to better convergence and improved performance on the validation set. With Early Stopping in place, I anticipated that training for more epochs (up to 20) would allow the model to fully exploit the data while still avoiding overfitting.
+
+**Changes compared to the previous experiment**
+
+The main changes in this experiment were the introduction of Early Stopping and the OneCycleLR scheduler, allowing for an increased number of epochs. These were added on top of the setup from Experiment 4, which included self-attention pooling, SMART regularization, and a combined loss function.
+
+**Results**
+
+The model achieved a validation accuracy of 0.782 by epoch 12, with the best model being saved at that point. The final training accuracy was 0.900, indicating strong performance on the training set. However, the early stopping mechanism was triggered after epoch 15 due to a lack of further improvement in validation accuracy, confirming its role in preventing overfitting.
+
+**Relevant Metrics and Visualization**
+
+The experiment saw the validation accuracy gradually improve from 0.665 in the first epoch to 0.782 by epoch 12. The use of OneCycleLR helped maintain a relatively smooth training process, and Early Stopping ensured that training did not continue unnecessarily once the validation accuracy plateaued. The final saved model had a validation accuracy of 0.782 and a training accuracy of 0.900.
+
+**Discussion of the results**
+
+The introduction of Early Stopping effectively prevented overfitting, which was a concern in previous experiments. The OneCycleLR scheduler contributed to a more effective training process by dynamically adjusting the learning rate, allowing the model to achieve a slightly higher validation accuracy compared to earlier experiments. The ability to train for up to 20 epochs provided the model with more opportunities to learn, but Early Stopping ensured that training was halted when further improvements were unlikely. However, the gap between training and validation accuracy remains, indicating some level of overfitting. Overall, these techniques helped optimize the training process, leading to a well-tuned model that performed robustly on the validation set.
+
+</details>
+
+<details>
+<summary><h4>Experiment 6: Incorporating an MLP Head with Self-Attention Pooling</h4></summary>
+
+In this experiment, I replaced the simple linear classifier with a Multi-Layer Perceptron (MLP) head while retaining self-attention pooling for embedding aggregation. The MLP head consists of three layers with a dropout probability of 0.3 and incorporates residual connections where applicable. The goal was to determine if the additional complexity of the MLP head would improve the model's performance on paraphrase detection tasks. The model's performance was evaluated based on accuracy on the validation set.
+
+**Expectations for this experiment**
+
+I expected that the MLP head, with its additional layers and residual connections, would enable the model to capture more complex patterns in the data, potentially leading to improved accuracy compared to the simpler linear classifier used in previous experiments.
+
+**Changes compared to the previous experiment**
+
+The main change in this experiment was the introduction of the MLP head, which replaced the linear classifier used in earlier experiments. This MLP head is designed with three layers, ReLU activations, dropout layers for regularization, and residual connections to help stabilize training. This was combined with self-attention pooling, which had shown promise in Experiment 4. Additionally, the model was trained for up to 20 epochs with Early Stopping in place, ensuring that training would halt once validation performance plateaued.
+
+**Results**
+
+The model achieved a validation accuracy of 0.779 by epoch 12, with the best model being saved at that point. The final training accuracy reached 0.916, indicating strong learning on the training set. Early Stopping was triggered after epoch 16, preventing further training as the validation accuracy did not improve beyond 0.779.
+
+**Relevant Metrics and Visualization**
+
+The experiment saw validation accuracy improve from 0.696 in the first epoch to 0.779 by epoch 12. The use of an MLP head allowed the model to achieve a slight improvement in performance over previous experiments, particularly when combined with self-attention pooling.
+
+**Discussion of the results**
+
+The introduction of the MLP head provided a modest improvement in validation accuracy compared to earlier experiments with simpler classifiers. The additional layers in the MLP head, along with the residual connections, likely allowed the model to capture more complex relationships in the data, contributing to better performance. However, the gap between training and validation accuracy suggests that the model still experienced some overfitting, even with Early Stopping in place. Overall, this experiment demonstrated that the MLP head, combined with self-attention pooling, could enhance the model's ability to generalize, leading to the highest validation accuracy observed so far.
+
+</details>
+
+<details>
+<summary><h4>Experiment 7: Adding Multi-Head Attention Layer</h4></summary>
+
+In this experiment, I incorporated a Multi-Head Attention (MHA) layer on top of the BERT embeddings. The MHA layer aims to enhance the model's ability to focus on different parts of the input sequences simultaneously, potentially capturing more nuanced relationships between sentence pairs. The paraphrase detection task was used to evaluate the model's performance, with validation accuracy being the primary metric.
+
+**Expectations for this experiment**
+
+I expected that the addition of the Multi-Head Attention layer would allow the model to better capture complex dependencies between words in each sentence pair, leading to improved performance on the paraphrase detection task.
+
+**Changes compared to the previous experiment**
+
+The main modification in this experiment was the integration of a Multi-Head Attention layer after obtaining the sentence embeddings from BERT. This layer, configured with a specific number of attention heads and a dropout mechanism, was designed to refine the embeddings further before they were fed into the classifier. This setup was compared to the previous experiments that did not include MHA.
+
+**Results**
+
+The model achieved a validation accuracy of 0.776 at its best, which was observed after 10 epochs of training. The training accuracy reached 0.853 by the same epoch. Early Stopping was triggered at epoch 14, as the model's performance plateaued on the validation set.
+
+**Relevant Metrics and Visualization**
+
+Validation accuracy started at 0.641 in the first epoch and progressively improved, reaching 0.776 by epoch 10. However, the model did not consistently improve beyond this point, which led to Early Stopping.
+
+**Discussion of the results**
+
+The introduction of the Multi-Head Attention layer provided a small performance boost compared to the previous experiments, particularly in the early stages of training. This suggests that MHA helped the model capture more complex patterns in the data. However, the performance gains plateaued relatively quickly, which may indicate that while MHA provided some benefits, the model may still be limited by other factors, such as the architecture of the final classifier or overfitting to the training data. The results aligned with the expectation that MHA could improve performance, though the improvement was not as substantial as hoped. The observed trend suggests that while MHA can enhance the model's capabilities, other improvements may be necessary to fully leverage its potential.
+
+</details>
+
+<details>
+<summary><h4>Experiment 8: Incorporating Gradual Unfreezing with Custom Scheduler</h4></summary>
+
+In this experiment, I implemented a Gradual Unfreezing strategy using a custom scheduler (GradualUnfreezeScheduler) instead of the OneCycleLR scheduler. The main idea behind gradual unfreezing is to start with only the classifier layers being trained and gradually unfreeze and train the earlier layers of the BERT model as training progresses. This approach can help in stabilizing the training, especially in the early stages, and allow the model to focus on learning the classifier parameters first. The evaluation was conducted on the paraphrase detection task, using validation accuracy as the key metric.
+
+**Expectations for this experiment**
+
+I expected that Gradual Unfreezing would improve the model's stability during training and lead to better generalization by fine-tuning the BERT layers progressively. This method was anticipated to yield better or at least comparable performance to previous experiments where the model was trained with OneCycleLR.
+
+**Changes compared to the previous experiment**
+
+The primary change in this experiment was the replacement of the OneCycleLR scheduler with the custom GradualUnfreezeScheduler. This scheduler gradually unfreezes the BERT layers over the course of training. Specifically, we used the following parameters:
+
+- `freeze_epochs=3`: The first 3 epochs keep all BERT layers frozen.
+- `thaw_epochs=6`: Over the next 6 epochs, layers are progressively unfrozen.
+- `max_lr=3e-05`: The learning rate gradually increases to this maximum value during the thawing phase.
+
+**Results**
+
+The model achieved a best validation accuracy of 0.776 by the 12th epoch. Training accuracy at this point was 0.858. Early Stopping was triggered at epoch 14, indicating that the model's performance plateaued. The Gradual Unfreezing strategy allowed the model to progressively improve over a more extended training period, similar to the results observed with the OneCycleLR scheduler.
+
+**Relevant Metrics and Visualization**
+
+The model’s validation accuracy steadily increased from 0.641 in the first epoch to 0.776 in the 12th epoch. The gradual unfreezing of BERT layers helped in maintaining a consistent improvement without significant fluctuations in validation performance.
+
+**Discussion of the results**
+
+The Gradual Unfreezing approach provided a stable training process, leading to consistent improvement in validation accuracy. This matches the expectation that starting with frozen layers and gradually unfreezing them can lead to better generalization. However, the final accuracy was comparable to that achieved with OneCycleLR, suggesting that while both methods are effective, the choice between them might depend on specific model behaviors and dataset characteristics. The gradual unfreezing seemed to prevent overfitting to some extent, as the model’s validation accuracy remained close to the training accuracy even in later epochs. The trend indicates that gradual unfreezing is a viable alternative to more aggressive scheduling techniques, offering a more controlled training process.
 
 </details>
 
