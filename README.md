@@ -370,12 +370,12 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 
 ### Paraphrase Type Detection
 
-- All experiments for this task are evaulated using MCC.
-- Early stoppping is used within all experiments to use the model with the best Validation MCC.
+- All experiments for this task are evaluated using MCC.
+- Early stopping is used within all experiments to use the model with the best Validation MCC.
 - A train val split of 0.9 was used (since the dataset is not very large).
 - The default loss function is BCEWithLogitsLoss unless mentioned otherwise
 - All accuracy graphs begin at 0.7 (ie 70% accuracy).
-- The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
+- The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimization using Optuna in Experiment number 7.
 
 <details>
 <summary><h4>Experiment 1: 2 layers with lr scheduler (not included)</h4></summary>
@@ -409,7 +409,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - The decoder part of the vae is added on top of the base model.
 - What were the results?
-  - The model performed sligthtly better with a mcc of 0.066.
+  - The model performed slightly better with a mcc of 0.066.
 - Add relevant metrics and plots that describe the outcome of the experiment well.
 
 ![accuracies](images/ptd-experiments/exp3.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp3.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
@@ -435,7 +435,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
   ![accuracies](images/ptd-experiments/exp4.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp4.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
-  - Even though smart loss was added, the vae overfits to do the data quite a lot. This is unexpected since the randomness should have made the model more generalised instead of more specific to the data.
+  - Even though smart loss was added, the vae overfits to do the data quite a lot. This is unexpected since the randomness should have made the model more generalized instead of more specific to the data.
 
 </details>
 
@@ -467,7 +467,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
   - I am running the simultaneous training experiment here. I am alternatively training the model on the
   - branch name: `ptd-exp6`
 - What were your expectations for this experiment?
-  - since the model is training on two models simultaneously, I expected the metrics to be erractic but have positive (upward) trend
+  - since the model is training on two models simultaneously, I expected the metrics to be erratic but have positive (upward) trend
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - I have added another head to train for paraphrase detection and another data loading pipeline for paraphrase detection.
 - What were the results?
@@ -538,7 +538,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 
 ### Paraphrase Type Generation
 
-- All experiments for this task are evaulated using the Penalised BLUE Score.
+- All experiments for this task are evaluated using the Penalized BLUE Score.
 - A train val split of 0.9 was used (since the dataset is not very large).
 - The default loss function is Negative log likelihood and the other mentioned in the experiment below are added to it.
 - The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization).
@@ -551,11 +551,11 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
     We show the results of the implementations of these 2 losses together.
   - branch name: `ptg-cos-loss`
 - What were your expectations for this experiment?
-  - We expected an immediate increase in perfomance as the cosine embedding loss makes sure that the paraphrases are close to each other while simultaneously not being exactly the same.
+  - We expected an immediate increase in performance as the cosine embedding loss makes sure that the paraphrases are close to each other while simultaneously not being exactly the same.
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - only the loss was changed without any architectural changes.
 - What were the results?
-  - The dev penalised score for cosine embedding loss is 9.94 while that of cosine embedding loss with identity loss is 9.89.
+  - The dev penalized score for cosine embedding loss is 9.94 while that of cosine embedding loss with identity loss is 9.89.
 - Add relevant metrics and plots that describe the outcome of the experiment well.
 
   Cosine loss only
@@ -565,7 +565,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
   ![cosine loss and identity loss](images/ptg-experiments/e2_gen.txt-metrics.csv_scores_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
-  - Both loss functions perform better than the baseline. Identity loss performs slightly worse but it seems to not suffer from over-fitting problem that plain cosine embedding loss suffers from. There room to improve the blue score better by optimising the weight of the losses involved.
+  - Both loss functions perform better than the baseline. Identity loss performs slightly worse but it seems to not suffer from over-fitting problem that plain cosine embedding loss suffers from. There room to improve the blue score better by optimizing the weight of the losses involved.
 
 </details>
 
@@ -576,7 +576,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
   - Here we pre-train the model on the [paws dataset](#fine-tuning-bart-on-the-paws-dataset-for-paraphrase-type-generation) for 5 epochs (entries that have the label 1, ie true paraphrases) and .
   - branch name: `ptg-paws`
 - What were your expectations for this experiment?
-  - We expected that pre-training on the paws dataset would have a significant improvement on the Blue score. We also expected the model to generalise better (prevent over-fitting).
+  - We expected that pre-training on the paws dataset would have a significant improvement on the Blue score. We also expected the model to generalize better (prevent over-fitting).
 - What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
   - We started from the baseline and add a new dataloader and training loop for the pre-training task
 - What were the results?
@@ -586,7 +586,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 ![gen exp2 score](images/ptg-experiments/e3_gen.txt-metrics.csv_scores_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
-  - The model performed quite worse than the baseline. This is because the model doesn't copy the input exactly and thus suffers even if it generalises better.
+  - The model performed quite worse than the baseline. This is because the model doesn't copy the input exactly and thus suffers even if it generalizes better.
 
 </details>
 
@@ -606,7 +606,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
   ![gen exp3 score](images/ptg-experiments/e4_gen.txt-metrics.csv_scores_vs_epoch.png)
 
 - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
-  - Our model performs quite well but suffers from overfitting. Next experiments could improve this by adding regularisation.
+  - Our model performs quite well but suffers from overfitting. Next experiments could improve this by adding regularization.
 
 </details>
 
@@ -642,7 +642,7 @@ The key modification in this experiment was the introduction of the combined los
 
 The experiment showed a minor improvement in the model’s validation accuracy, reaching 0.772 compared to the baseline 0.771. However, the training accuracy was significantly higher, suggesting the model was able to learn well on the training data but struggled to generalize as effectively to the validation set.
 
-**Relevant Metrics and Visulaization.**
+**Relevant Metrics and Visualization.**
 
 ![pd exp1](images/pd-experiments/pd_exp1.csv_scores_vs_epoch.png)
 
@@ -903,7 +903,7 @@ Summarize all the results of your experiments in tables:
 | Simultaneos training (exp6)         | 82.7%        | 0.058   |
 | Deep layers with Focal Loss (exp7)  | 82.6%        | 0.064   |
 
-| **Paraphrase Type Generation (PTG)** | **Penalised BLUE** |
+| **Paraphrase Type Generation (PTG)** | **Penalized BLUE** |
 | ------------------------------------ | ------------------ |
 | Baseline                             | 9.43               |
 | Cosine Embedding + Identity Loss     | 9.89               |
@@ -957,7 +957,7 @@ A patience value of 4 was used since larger values would never early stop (given
 
 #### Comparing experiment 4 and 5
 
-![exp 4 and 5 comparision](images/ptd-experiments/matthews_coefficients_comparison.png)
+![exp 4 and 5 comparison](images/ptd-experiments/matthews_coefficients_comparison.png)
 
 Experiment 4 returns the best mcc while simultaneous training solves the problem of overfitting in the best way. Next experiments could combine the two and note if they give better performance without overfitting.
 
