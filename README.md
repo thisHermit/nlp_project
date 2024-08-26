@@ -1176,6 +1176,8 @@ change the following constants in **multitask_calssifier.py**
 
 
 
+
+
 ## Results
 
 Summarize all the results of your experiments in tables:
@@ -1209,6 +1211,35 @@ Summarize all the results of your experiments in tables:
 | Improvement 1                         | 58.56%       | ...          |
 | Improvement 2                         | 52.11%       | ...          |
 | ...                                   | ...          | ...          |
+
+| **Semantic Textual Similarity (STS)** | **Pearson's Correlation** |
+|---------------------------------------|-----------------------|
+| Baseline (BERT + MSE)                 | 0.384                 |
+| Cosine Similarity + MSE               | 0.596                 |
+| SMART Fine-Tuning                     | 0.604                 |
+| VAE                                   | 0.635                 |
+| Multiple Negative Ranking Loss (Mnrl) | 0.752                 |
+| Mnrl + MSE (Weight 0.5)               | 0.787                 |
+| Mnrl + MSE (Weight 0.7)               | 0.802                 |
+| Mnrl + MSE (Weight 1.0)               | 0.807                 |
+| SMART + Mnrl                          | 0.814                 |
+| **SMART + Mnrl + MSE (Best Model)**   | **0.814**             |
+
+| **Semantic Textual Similarity (STS)** | **Pearson's Correlation** |
+|---------------------------------------|-----------------------|
+| Baseline (BERT + MSE)                 | 0.384                 |
+| Cosine Similarity + MSE               | 0.592                 |
+| Mean Pooling                          | 0.632                 |
+| VAE (latent dim = 128)                | 0.581                 |
+| VAE (latent dim = 6)                  | 0.627                 |
+| SMART + MSE (Weight 0.02)             | 0.604                 |
+| SMART + MSE (Weight 0.1)              | 0.594                 |
+| MNRL                                  | 0.747                 |
+| MNRL + MSE (Weight 0.5)               | 0.804                 |
+| MNRL + MSE (Weight 1.0)               | 0.807                 |
+| SMART + MNRL                          | 0.814                 |
+| SMART + MNRL + MSE                    | 0.804                 |
+| **Pre-trained QQP + SMART + MNRL + MSE**  | **0.811**         |
 
 | **Paraphrase Type Detection (PTD)** | **Accuracy** | **MCC** |
 | ----------------------------------- | ------------ | ------- |
