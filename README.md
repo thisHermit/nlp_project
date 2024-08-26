@@ -735,6 +735,7 @@ The experiment showed a minor improvement in the model’s validation accuracy, 
 The key metrics were the training and validation accuracies. By the end of the experiment, the training accuracy reached 0.951, while the validation accuracy plateaued at 0.772, indicating a potential overfitting issue.
 
 **Discussion of the results**
+
 While the combined loss function did improve the validation accuracy slightly, the significant gap between the training and validation accuracies points to overfitting. This suggests that while the model could capture complex patterns in the training data, it did not generalize well to unseen data. This outcome partly matched expectations—improvement was seen, but it highlighted the need for better regularization techniques or adjustments to the model to prevent overfitting. The trend suggests that the model may benefit from techniques like early stopping, dropout, or SMART regularization to improve generalization.
 
 </details>
