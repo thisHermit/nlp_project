@@ -381,7 +381,7 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 <summary><h4>Experiment 1: 2 layers with lr scheduler (not included)</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
-  - I simply add a learning rate scheduler (ExponentialLR) and early stopping and add another fully connected linear layer.
+  - I add a learning rate scheduler (ExponentialLR) and early stopping and add another fully connected linear layer.
   - branch name: `ptd-exp2`
 - What were your expectations for this experiment?
   - I expected an immediate increase in perfomance as I suspected that a learning rate scheduler would attempt to solve the overfitting observed while fine-tuning.
@@ -619,6 +619,13 @@ Throughout all experiments, we utilized the Sophia optimizer with its default hy
 Below, we delve into the specific experiments, discussing their design, expectations, results, and insights gained.
 
 <details>
+<summary><h4>Experiment 0: Baseline</h4></summary>
+
+![pd exp1](images/pd-experiments/pd_baseline.csv_scores_vs_epoch.png)
+
+</details>
+
+<details>
 <summary><h4>Experiment 1: Implementing Combined Loss Function Over Baseline BERT Model with Simple Linear Classifier Head</h4></summary>
 
 This experiment involved implementing a combined loss function—comprising Binary Cross-Entropy (BCE) Loss, Cosine Embedding Loss, and Multiple Negatives Ranking Loss (MNRL)—over the baseline BERT model for the paraphrase detection task using the Quora dataset. The model's performance was evaluated based on its accuracy on the validation set after each training epoch.
@@ -636,6 +643,8 @@ The key modification in this experiment was the introduction of the combined los
 The experiment showed a minor improvement in the model’s validation accuracy, reaching 0.772 compared to the baseline 0.771. However, the training accuracy was significantly higher, suggesting the model was able to learn well on the training data but struggled to generalize as effectively to the validation set.
 
 **Relevant Metrics and Visulaization.**
+
+![pd exp1](images/pd-experiments/pd_exp1.csv_scores_vs_epoch.png)
 
 The key metrics were the training and validation accuracies. By the end of the experiment, the training accuracy reached 0.951, while the validation accuracy plateaued at 0.772, indicating a potential overfitting issue.
 
@@ -665,6 +674,8 @@ The model with SMART regularization achieved a validation accuracy of 0.775, whi
 
 **Relevant Metrics and Visualization**
 
+![pd exp1](images/pd-experiments/pd_ex2.csv_scores_vs_epoch.png)
+
 By the end of the experiment, the model had a training accuracy of 0.839 and a validation accuracy of 0.775. The continuous increase in validation accuracy up to epoch 10, with the final accuracy at 0.775, suggests that the model benefitted from the regularization provided by SMART.
 
 **Discussion of the results**
@@ -691,6 +702,8 @@ The key modification in this experiment was the use of mean pooling for sentence
 The experiment concluded with a validation accuracy of 0.778, an improvement over the 0.775 accuracy achieved in Experiment 2. The final training accuracy reached 0.864, indicating continued strong performance on the training set, but the improvement in validation accuracy suggests that mean pooling helped in generalizing better to the validation data.
 
 **Relevant Metrics and Visualization**
+
+![pd exp1](images/pd-experiments/pd_ex3.csv_scores_vs_epoch.png)
 
 The model achieved a final validation accuracy of 0.778, with a corresponding training accuracy of 0.864 by epoch 10. This improvement over Experiment 2 suggests that mean pooling contributed to better sentence representation and, consequently, better performance on the paraphrase detection task.
 
@@ -719,6 +732,8 @@ The experiment concluded with a validation accuracy of 0.779, marking a slight i
 
 **Relevant Metrics and Visualization**
 
+![pd exp1](images/pd-experiments/pd_ex4.csv_scores_vs_epoch.png)
+
 The model reached a final validation accuracy of 0.779, with a corresponding training accuracy of 0.867 by epoch 10. The consistent improvement in validation accuracy throughout the training epochs highlights the potential of self-attention pooling in enhancing the model's ability to generalize to unseen data.
 
 **Discussion of the results**
@@ -745,6 +760,8 @@ The main changes in this experiment were the introduction of Early Stopping and 
 The model achieved a validation accuracy of 0.782 by epoch 12, with the best model being saved at that point. The final training accuracy was 0.900, indicating strong performance on the training set. However, the early stopping mechanism was triggered after epoch 15 due to a lack of further improvement in validation accuracy, confirming its role in preventing overfitting.
 
 **Relevant Metrics and Visualization**
+
+![pd exp1](images/pd-experiments/pd_ex5.csv_scores_vs_epoch.png)
 
 The experiment saw the validation accuracy gradually improve from 0.665 in the first epoch to 0.782 by epoch 12. The use of OneCycleLR helped maintain a relatively smooth training process, and Early Stopping ensured that training did not continue unnecessarily once the validation accuracy plateaued. The final saved model had a validation accuracy of 0.782 and a training accuracy of 0.900.
 
@@ -773,6 +790,8 @@ The model achieved a validation accuracy of 0.779 by epoch 12, with the best mod
 
 **Relevant Metrics and Visualization**
 
+![pd exp1](images/pd-experiments/pd_ex6.csv_scores_vs_epoch.png)
+
 The experiment saw validation accuracy improve from 0.696 in the first epoch to 0.779 by epoch 12. The use of an MLP head allowed the model to achieve a slight improvement in performance over previous experiments, particularly when combined with self-attention pooling.
 
 **Discussion of the results**
@@ -799,6 +818,8 @@ The main modification in this experiment was the integration of a Multi-Head Att
 The model achieved a validation accuracy of 0.776 at its best, which was observed after 10 epochs of training. The training accuracy reached 0.853 by the same epoch. Early Stopping was triggered at epoch 14, as the model's performance plateaued on the validation set.
 
 **Relevant Metrics and Visualization**
+
+![pd exp1](images/pd-experiments/pd_ex7.csv_scores_vs_epoch.png)
 
 Validation accuracy started at 0.641 in the first epoch and progressively improved, reaching 0.776 by epoch 10. However, the model did not consistently improve beyond this point, which led to Early Stopping.
 
@@ -830,6 +851,8 @@ The primary change in this experiment was the replacement of the OneCycleLR sche
 The model achieved a best validation accuracy of 0.776 by the 12th epoch. Training accuracy at this point was 0.858. Early Stopping was triggered at epoch 14, indicating that the model's performance plateaued. The Gradual Unfreezing strategy allowed the model to progressively improve over a more extended training period, similar to the results observed with the OneCycleLR scheduler.
 
 **Relevant Metrics and Visualization**
+
+![pd exp1](images/pd-experiments/pd_ex8.csv_scores_vs_epoch.png)
 
 The model’s validation accuracy steadily increased from 0.641 in the first epoch to 0.776 in the 12th epoch. The gradual unfreezing of BERT layers helped in maintaining a consistent improvement without significant fluctuations in validation performance.
 
