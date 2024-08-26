@@ -339,9 +339,14 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 > - Add relevant metrics and plots that describe the outcome of the experiment well.
 > - Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
 
-### Paraphrase Type Generation
+### Paraphrase Type Detection
 
-All experiments for this task are evaulated using MCC. Early stoppping is used within all experiments to use the model with the best Validation MCC. A train val split of 0.9 was used (since the dataset is not very large). Also all accuracy graphs begin at 0.7 (ie 70% accuracy). The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
+- All experiments for this task are evaulated using MCC.
+- Early stoppping is used within all experiments to use the model with the best Validation MCC.
+- A train val split of 0.9 was used (since the dataset is not very large).
+- The default loss function is BCEWithLogitsLoss unless mentioned otherwise
+- All accuracy graphs begin at 0.7 (ie 70% accuracy).
+- The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimisation using Optuna in Experiment number 7.
 
 <details>
 <summary><h4>Experiment 1</h4></summary>
@@ -502,6 +507,80 @@ All experiments for this task are evaulated using MCC. Early stoppping is used w
 
 </details>
 
+### Paraphrase Type Generation
+
+- All experiments for this task are evaulated using the Penalised BLUE Score.
+- A train val split of 0.9 was used (since the dataset is not very large).
+- The default loss function is Negative log likelihood and the other mentioned in the experiment below are added to it.
+- The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization).
+
+<details>
+<summary><h4>Experiment 1</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - We use a cosine embedding loss, and also later add [identity loss](#identity-loss). This identity loss was added because the generated output replicated the input many times. So the result is a combine loss
+    We show the results of the implementations of these 2 losses together.
+  - branch name: `ptd-cos-loss`
+- What were your expectations for this experiment?
+  - We expected an immediate increase in perfomance as the cosine embedding loss makes sure that the paraphrases are close to each other while simultaneously not being exactly the same.
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - only the loss was changed without any architectural changes.
+- What were the results?
+  - The dev penalised score for cosine embedding loss is 9.94 while that of cosine embedding loss with identity loss is 9.89.
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+  Cosine loss only
+  ![cosine loss only](images/ptg-experiments/e1_gen.txt-metrics.csv_scores_vs_epoch.png)
+
+  Cosine and identity loss
+  ![cosine loss and identity loss](images/ptg-experiments/e2_gen.txt-metrics.csv_scores_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - Both loss functions perform better than the baseline. Identity loss performs slightly worse but it seems to not suffer from over-fitting problem that plain cosine embedding loss suffers from. There room to improve the blue score better by optimising the weight of the losses involved.
+
+</details>
+
+<details>
+<summary><h4>Experiment 2</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - Here we pre-train the model on the [paws dataset](#fine-tuning-bart-on-the-paws-dataset-for-paraphrase-type-generation) for 5 epochs (entries that have the label 1, ie true paraphrases) and .
+  - branch name: `ptg-paws`
+- What were your expectations for this experiment?
+  - We expected that pre-training on the paws dataset would have a significant improvement on the Blue score. We also expected the model to generalise better (prevent over-fitting).
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - We started from the baseline and add a new dataloader and training loop for the pre-training task
+- What were the results?
+  - The model performed significantly worse with a blue score of 6.29.
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+
+![gen exp2 score](images/ptg-experiments/e3_gen.txt-metrics.csv_scores_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - The model performed quite worse than the baseline. This is because the model doesn't copy the input exactly and thus suffers even if it generalises better.
+
+</details>
+
+<details>
+<summary><h4>Experiment 3</h4></summary>
+
+- What experiments are you executing? Don't forget to tell how you are evaluating things.
+  - We use the baseline model trained on paws (experiment 2) and then use the combined loss implemented in experiment 1.
+  - branch name: `ptg-best-model`
+- What were your expectations for this experiment?
+  - We expected to get better results than in Experiment 2 since our loss has a similarity component to it, ie the cosine embedding loss.
+- What have you changed compared to the base model (or to previous experiments, if you run experiments on top of each other)?
+  - we used the code in experiment 1 and just loaded the model saved in experiment 2
+- What were the results?
+  - This model performs the best and returns a score of 15.3. (Note: the model goes up to a score of 20.58 but since early stopping isn't implemented, only latest dev score is reported)
+- Add relevant metrics and plots that describe the outcome of the experiment well.
+  ![gen exp3 score](images/ptg-experiments/e4_gen.txt-metrics.csv_scores_vs_epoch.png)
+
+- Discuss the results. Why did improvement _A_ perform better/worse compared to other improvements? Did the outcome match your expectations? Can you recognize any trends or patterns?
+  - Our model performs quite well but suffers from overfitting. Next experiments could improve this by adding regularisation.
+
+</details>
+
 ## Results
 
 Summarize all the results of your experiments in tables:
@@ -536,16 +615,17 @@ Summarize all the results of your experiments in tables:
 | Simultaneos training (exp6)         | 82.7%        | 0.058   |
 | Deep layers with Focal Loss (exp7)  | 82.6%        | 0.064   |
 
-| **Paraphrase Type Generation (PTG)** | **Metric 1** | **Metric n** |
-| ------------------------------------ | ------------ | ------------ |
-| Baseline                             | 45.23%       | ...          |
-| Improvement 1                        | 58.56%       | ...          |
-| Improvement 2                        | 52.11%       | ...          |
-| ...                                  | ...          | ...          |
+| **Paraphrase Type Generation (PTG)** | **Penalised BLUE** |
+| ------------------------------------ | ------------------ |
+| Baseline                             | 9.43               |
+| Cosine Embedding + Identity Loss     | 9.89               |
+| PAWS pre-train                       | 6.29               |
+| PAWS pre-train + Combined loss       | 15.3               |
 
 Notes:
 
 - \*_These metrics for the baseline were observed after attempting to confirm and reproduce the final results. The initial recording of these metrics were 82.1% accuracy and 0.069 mcc but they are not longer reproducible._
+- _For paraphrase type generation, the final dev scores are reported not the best ones. This is because the generation model doesn't implement early stopping._
 
 > Discuss your results, observations, correlations, etc.
 
@@ -557,6 +637,14 @@ Notes:
 
 > _Note: Random parameter optimization with no motivation/discussion is not interesting and will be graded accordingly_
 
+#### Paraphrase Type Detection
+
+TODO
+
+#### Paraphrase Type Generation
+
+TODO
+
 ## Visualizations
 
 > Add relevant graphs of your experiments here. Those graphs should show relevant metrics (accuracy, validation loss, etc.) during the training. Compare the different training processes of your improvements in those graphs.
@@ -567,13 +655,23 @@ Notes:
 > - Does Improvement B converge slower but perform better in the end?
 > - etc...
 
-### Paraphrase Type Generation
+### Paraphrase Type Detection
 
 #### Baseline
 
 ![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
 
-#### All experiments together
+#### Comparing experiment 4 and 5
+
+![exp 4 and 5 comparision](images/ptd-experiments/matthews_coefficients_comparison.png)
+
+Experiment 4 returns the best mcc while simultaneous training solves the problem of overfitting in the best way. Next experiments could combine the two and note if they give better performance without overfitting.
+
+### Paraphrase Type Generation
+
+#### Baseline
+
+![generation baseline](images/ptg-experiments/e0_gen.txt-metrics.csv_scores_vs_epoch.png)
 
 ## Members Contribution
 
@@ -581,15 +679,15 @@ Notes:
 
 **Madkour, Khaled:** _implemented the training objective using X, Y, and Z. Supported member 2 in refactoring the code. Data cleaning, etc._
 
-**Khan, Bashar Jaan:** _implemented all the experiments for paraphrase type detection. Supported Muneeb for desinging experiments for paraphrase detection and for paraphrase type generation (identity and paws)._
+**Khan, Bashar Jaan:** _implemented all the experiments for paraphrase type detection. Helped Muneeb work on paraphrase type generation (equal contributions)_
 
-**Khan, Muneeb:** _implemented all the experiments for paraphrase detection. Supported Bashar for desinging experiments for paraphrase type detection and for paraphrase type generation._
+**Khan, Muneeb:** _implemented all the experiments for paraphrase detection. Helped Bashar work on paraphrase type generation (equal contributions)_
 
 **Assy, Ahmed Tamer:** _implemented the training objective using X, Y, and Z. Supported member 2 in refactoring the code. Data cleaning, etc._
 
 # AI-Usage Card
 
-> Artificial Intelligence (AI) aided the development of this project. Please add a link to your AI-Usage card [here](https://ai-cards.org/).
+Artificial Intelligence (AI) aided the development of this project. Please find our AI-Usage card [here](ai-usage-card.pdf) (generated from [https://ai-cards.org/](https://ai-cards.org/)).
 
 # References
 
