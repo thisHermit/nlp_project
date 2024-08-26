@@ -960,8 +960,8 @@ In **Experiment 6**, we implemented the focal loss function to enhance the model
 For reference, you can view the performance of state-of-the-art models on the SST-5 dataset [here](https://paperswithcode.com/sota/sentiment-analysis-on-sst-5-fine-grained). As shown, our model's accuracy is competitive when compared to these advanced models.
 
 ![State-of-the-Art Models](https://github.com/user-attachments/assets/8a2b2056-a47f-4780-8c81-1047e90adbb2)
-
-1. **Experiment 1: Fine-Tuning BERT with New Datasets**
+<details>
+<summary><h4> **Experiment 1: Fine-Tuning BERT with New Datasets** </h4></summary>
    - **Description**: This experiment involved fine-tuning the BERT model using three datasets:
      - **IMDB Dataset**: A dataset of 50,000 movie reviews for binary sentiment classification.
        - **Description**: The IMDB dataset consists of 25,000 positive and 25,000 negative movie reviews. Due to limited resources, only 17,500 samples were used for training.
@@ -1008,9 +1008,10 @@ For reference, you can view the performance of state-of-the-art models on the SS
       ./run_train.py
    ```
 
+</details>
 
-
-2. **Experiment 2: Multi-Task Fine-Tuning with Sentiment Analysis and Semantic Similarity**
+<details>
+<summary><h4> **Experiment 2: Multi-Task Fine-Tuning with Sentiment Analysis and Semantic Similarity** </h4></summary>
    - **Description**: This experiment involved fine-tuning the BERT model to perform two distinct tasks simultaneously:
      - **Sentiment Analysis Task**: Utilized the SST dataset for sentiment classification.
        - **Description**: The sentiment analysis task involved classifying sentences into different sentiment categories using a dropout layer and a classification layer.
@@ -1051,8 +1052,9 @@ change the following constants in **multitask_calssifier.py**
    ```bash
       ./run_train.py
    ```
-
-3. **Experiment 3: Changing the Classification Head**
+</details>
+<details>
+<summary><h4> **Experiment 3: Changing the Classification Head** </h4></summary>
    - **Description**: This experiment explored a more complex classification head by integrating residual connections and a multi-layer perceptron with a bidirectional LSTM (bLSTM):
      - **Architecture**:
        - **Bidirectional LSTM (bLSTM)**: Added to model the sequence of sentences or words, capturing the overall sentiment flow.
@@ -1072,7 +1074,9 @@ change the following constants in **multitask_calssifier.py**
 | Bidirectional LSTM (bLSTM)  | Accuracy               | 51.9%      |
 | Simple Classification Layer (Baseline) | Accuracy   | 52.2%      |
 
-4. **Experiment 4: Addressing Overfitting with Regularization Techniques**
+</details>
+<details>
+<summary><h4> **Experiment 4: Addressing Overfitting with Regularization Techniques** </h4></summary>
    - **Description**: This experiment aimed to tackle the overfitting issue by applying various regularization techniques to the model. The following techniques were tested:
      - **Dropout**: Applied with a dropout rate of 0.4.
        - **Justification**: Dropout helps prevent overfitting by randomly dropping units during training, which encourages the model to learn more robust features.
@@ -1105,8 +1109,9 @@ change the following constants in **multitask_calssifier.py**
 | Gradient Clipping (Value: 1) | Accuracy               | 52.1%      |
 | Label Smoothing (Factor: 0.1) | Accuracy              | 52.3%      |
 
-
-5. **Experiment 5: Using Autoencoder as a Backbone After BERT**
+</details>
+<details>
+<summary><h4>**Experiment 5: Using Autoencoder as a Backbone After BERT**</h4></summary>
    - **Description**: In this experiment, I utilized an autoencoder as a backbone after the BERT model to reconstruct the embeddings produced by BERT. The goal was to improve the quality of embeddings and subsequently enhance sentiment classification performance.
    - **Autoencoder Architecture**:
      - **Encoder**:
@@ -1135,8 +1140,9 @@ change the following constants in **multitask_calssifier.py**
 |----------------------|-----------------------|------------|
 | Quora Paraphrase      | Reconstruction Loss   | 0.00001    |
 | SST                   | Accuracy               | 18.3%      |
-
-### Experiment 6: Exploring Multiple Loss Functions to Improve Model Performance
+</details>
+<details>
+<summary><h4>Experiment 6: Exploring Multiple Loss Functions to Improve Model Performance</h4></summary>
 
 **Description**: In this experiment, I explored different loss functions to improve the accuracy of the BERT-based sentiment analysis model. The goal was to determine which loss function yields the best performance on the SST development set.
 
@@ -1173,7 +1179,7 @@ change the following constants in **multitask_calssifier.py**
 | Hinge Loss               | Accuracy               | 52.4%      |
 | Dice Loss                | Accuracy               | 46.6%      |
 | Focal Loss               | Accuracy               | 53%        |
-
+</details>
 
 
 
