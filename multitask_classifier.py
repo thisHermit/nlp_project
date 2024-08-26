@@ -46,13 +46,16 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-DROPOUT = 0.0
+DROPOUT = 0.4
 WEIGHTDECAY = 0.0
 BATCHNORM = False
 L1_LAMBDAl = 0
 GradientClipping = False
 LABELSMOOTHING = 0.0
 
+# Architectures
+BiLSTM = False
+MLP = True
 
 # loss function
 # CrossEntropyLoss (cel), FocalLoss (fl), Hinge Loss (Multi-Class SVM) (hl),
@@ -87,6 +90,15 @@ class MultitaskBERT(nn.Module):
         self.paraphrase_classifier = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
         self.sts_head = nn.Linear(BERT_HIDDEN_SIZE * 2, 1)
         
+        # BiLSTM backbone  
+        self.lstm = nn.LSTM(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE // 2, bidirectional=True, batch_first=True)
+
+        # Residual MLP
+        self.mlp = nn.Sequential(
+            nn.Linear(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE),
+            nn.ReLU(),
+            nn.Linear(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE),
+        )
         # raise NotImplementedError
         # raise NotImplementedError
         self.dropout = nn.Dropout(p=DROPOUT)
@@ -120,6 +132,15 @@ class MultitaskBERT(nn.Module):
         ### TODO
         # raise NotImplementedError
         bert_output = self.forward(input_ids, attention_mask)
+        
+        # BiLSTM layer
+        if BiLSTM:
+            bert_output, _ = self.lstm(bert_output)
+        
+        # Residual MLP
+        if MLP:
+            bert_output = self.mlp(bert_output) + bert_output
+
         bert_output = self.dropout(bert_output)
         if BATCHNORM: 
             bert_output = self.batch_norm(bert_output)
@@ -773,7 +794,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{LOSS}-{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
+    args.filepath = f"models/{args.option}-{args.epochs}-{args.lr}-{LOSS}-{'MLP-' if MLP else ''}{'BiLSTM-' if BiLSTM else ''}{'GradientClipping-' if GradientClipping else ''}{'BatchNorm-' if BATCHNORM else ''}dr({DROPOUT})-l1({L1_LAMBDAl})-wd({WEIGHTDECAY})-LS({LABELSMOOTHING})-{args.task}.pt"  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
     train_multitask(args)
     # filepath = "/user/ahmed.assy/u11454/old_project/models/sst/finetune-10-1e-05-dr-0.0-wd-0.0-focal-sst.pt-->53%"
