@@ -1424,20 +1424,6 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 | +Multi-Head Attn Layer                       | 77.60%           |
 | +Gradual Unfreezing + retd. custom Scheduler | 77.80%           |
 
-
-| **Semantic Textual Similarity (STS)** | **Pearson's Correlation** |
-|---------------------------------------|-----------------------|
-| Baseline (BERT + MSE)                 | 0.384                 |
-| Cosine Similarity + MSE               | 0.596                 |
-| SMART Fine-Tuning                     | 0.604                 |
-| VAE                                   | 0.635                 |
-| Multiple Negative Ranking Loss (Mnrl) | 0.752                 |
-| Mnrl + MSE (Weight 0.5)               | 0.787                 |
-| Mnrl + MSE (Weight 0.7)               | 0.802                 |
-| Mnrl + MSE (Weight 1.0)               | 0.807                 |
-| SMART + Mnrl                          | 0.814                 |
-| **SMART + Mnrl + MSE (Best Model)**   | **0.814**             |
-
 | **Semantic Textual Similarity (STS)** | **Pearson's Correlation** |
 |---------------------------------------|-----------------------|
 | Baseline (BERT + MSE)                 | 0.384                 |
@@ -1450,7 +1436,6 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 | MNRL                                  | 0.747                 |
 | MNRL + MSE (Weight 0.5)               | 0.804                 |
 | MNRL + MSE (Weight 1.0)               | 0.807                 |
-| SMART + MNRL                          | 0.814                 |
 | SMART + MNRL + MSE                    | 0.804                 |
 | **Pre-trained QQP + SMART + MNRL + MSE**  | **0.811**         |
 
