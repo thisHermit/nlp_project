@@ -255,7 +255,7 @@ To run the script for the QQP (Quora Question Pairs) paraphrase detection task, 
 ```bash
 python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_type self_attention --lr 1e-5 --local_files_only --epochs 30 --scheduler gradual_unfreeze --freeze_epochs 3 --thaw_epochs 6 --use_mha --use_mlp
 ```
-##### Explanation of the Command And Available Options
+#### Explanation of the Command And Available Options
 - `--option finetune`: This option specifies that the BERT parameters will be updated during training (finetuning).
 - `--task qqp`: Specifies that the task is paraphrase detection on the Quora Question Pairs (QQP) dataset.
 - `--use_gpu`: Enables GPU usage if available.
@@ -269,7 +269,7 @@ python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_
 - `--use_mha`: Enables the usage of a Multi-Head Attention layer in the paraphrase classifier.
 - `--use_mlp`: Enables the usage of an MLP Head in the paraphrase classifier.
 
-##### Configurable Options
+#### Configurable Options
 - **Optimizer**: The default optimizer used is Sophia. You can switch to Adam by setting `--optimizer adam`.
 
 ```bash
