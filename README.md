@@ -986,7 +986,7 @@ In **Experiment 6**, we implemented the focal loss function to enhance the model
 
 ![Training and Validation Accuracy](https://github.com/user-attachments/assets/49227cf1-eb2f-49cc-8c18-3d177d130ea2)
 
-### Comparison with State-of-the-Art Models
+#### Comparison with State-of-the-Art Models
 
 For reference, you can view the performance of state-of-the-art models on the SST-5 dataset [here](https://paperswithcode.com/sota/sentiment-analysis-on-sst-5-fine-grained). As shown, our model's accuracy is competitive when compared to these advanced models.
 
