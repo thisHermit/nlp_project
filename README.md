@@ -635,6 +635,7 @@ Below, we delve into the specific experiments, discussing their design, expectat
 <summary><h4>Experiment 0: Baseline</h4></summary>
 
 ![pd exp1](images/pd-experiments/pd_baseline.csv_scores_vs_epoch.png)
+These are the results of the baseline, where we simply use a linear layer on top of BERT embeddings for classification.
 
 </details>
 
