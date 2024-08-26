@@ -1343,7 +1343,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 ## Results
 
 | **Sentiment Analysis**                                                                                                         |
-|---------------------------------|----------------------------------|--------------------|-------------------------|------------|
+|---------------------------------------------------------------------------------------------|
 | **Experiment**                  | **Best Model/Technique**         | **Dataset/Task**   | **Evaluation Metric**   | **Result** |
 | **Experiment 1**                | BERT Fine-Tuned                  | IMDB/SST           | Accuracy                | 93.8%/52.6%|
 | **Experiment 1**                | BERT Fine-Tuned                  | Tweets/SST         | Accuracy                | 61.6%/52.6%|
