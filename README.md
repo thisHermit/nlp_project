@@ -724,12 +724,9 @@ The expectation was that the combined loss function would enhance the model’s 
 
 The key modification in this experiment was the introduction of the combined loss function, incorporating BCE, Cosine Embedding Loss, and MNRL. The architecture remained the same with a simple linear classifier head, but the loss calculation was more sophisticated than the baseline, which only used BCE.
 
-### Paraphrase Type Generation
-
-
 **Results**
 
-The experiment showed a minor improvement in the model’s validation accuracy, reaching 0.772 compared to the baseline 0.771. However, the training accuracy was significantly higher, suggesting the model was able to learn well on the training data but struggled to generalize as effectively to the validation set.
+The experiment showed a minor improvement in the model’s validation accuracy, reaching 0.772 compared to the baseline of 0.771. However, the training accuracy was significantly higher, suggesting the model was able to learn well from the training data but struggled to generalize as effectively to the validation set.
 
 **Relevant Metrics and Visualization.**
 
