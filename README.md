@@ -1286,7 +1286,25 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 ![sts exp8](images/sts-experiments/pretrained_qqp_task_loss_corr_vs_epoch.png)
 
 </details>
+### general observations:
 
+[Convergence Speed vs Epoch](images/sts-experiments/all_exps_train_dev_corr_vs_epoch.png)
+
+#### Convergence Speed:
+
+- **MNRL** and **SMART+MNRL** demonstrate the fastest convergence, with their correlation values rapidly increasing in the early epochs.
+- **SMART** and **VAE_6** also show relatively quick convergence, although not as steep as MNRL and SMART+MNRL.
+- **BASE**, **COS_SIM**, **POOL_MEAN**, and **pretrained_qqp_task** exhibit slower convergence, with their correlation values increasing more gradually over time.
+
+#### Smoothness:
+
+- **MNRL** and **SMART+MNRL** generally exhibit smoother convergence patterns, with fewer fluctuations in their correlation values.
+- **SMART** also demonstrates relatively smooth convergence, although they might have some minor fluctuations.
+- **BASE**, **COS_SIM**, **POOL_MEAN**, and **pretrained_qqp_task** often show more pronounced fluctuations in their correlation values, suggesting less stable training dynamics.
+- **VAE_6**, shows biggest fluctuations proving to be worse in terms of smooth learning behavior  
+
+[Convergence Speed vs Epoch](images/sts-experiments/final_performance_comparison.png)
+[heatmap_dev_corr](https://github.com/thisHermit/nlp_project/blob/main/images/sts-experiments/heatmap_dev_corr.png)
 
 ## Results
 
