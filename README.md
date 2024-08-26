@@ -370,6 +370,11 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 - The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization) and also justified by Hyper parameter optimization using Optuna in Experiment number 7.
 
 <details>
+<summary><h4>Experiment 0: Baselline</h4></summary>
+![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
+</details>
+
+<details>
 <summary><h4>Experiment 1: 2 layers with lr scheduler (not included)</h4></summary>
 
 - What experiments are you executing? Don't forget to tell how you are evaluating things.
@@ -528,12 +533,28 @@ Inspired by the ULMFiT (Universal Language Model Fine-tuning) approach, we incor
 
 </details>
 
+<details>
+<summary><h4>Comparing experiment 4 and 5</h4></summary>
+
+![exp 4 and 5 comparison](images/ptd-experiments/matthews_coefficients_comparison.png)
+
+Experiment 4 returns the best mcc while simultaneous training solves the problem of overfitting in the best way. Next experiments could combine the two and note if they give better performance without overfitting.
+
+</details>
+
 ### Paraphrase Type Generation
 
 - All experiments for this task are evaluated using the Penalized BLUE Score.
 - A train val split of 0.9 was used (since the dataset is not very large).
 - The default loss function is Negative log likelihood and the other mentioned in the experiment below are added to it.
 - The hyper-parameters chosen are the same for all the experiments. The reasoning for their values is discussed [here](#hyperparameter-optimization).
+
+<details>
+<summary><h4>Experiment 0: Baselline</h4></summary>
+
+![generation baseline](images/ptg-experiments/e0_gen.txt-metrics.csv_scores_vs_epoch.png)
+
+</details>
 
 <details>
 <summary><h4>Experiment 1: Cosine Embedding + Identity Loss</h4></summary>
@@ -931,31 +952,7 @@ A patience value of 4 was used since larger values would never early stop (given
 
 ## Visualizations
 
-> Add relevant graphs of your experiments here. Those graphs should show relevant metrics (accuracy, validation loss, etc.) during the training. Compare the different training processes of your improvements in those graphs.
-
-> For example, you could analyze different questions with those plots like:
-
-> - Does improvement A converge faster during training than improvement B?
-> - Does Improvement B converge slower but perform better in the end?
-> - etc...
-
-### Paraphrase Type Detection
-
-#### Baseline
-
-![accuracies](images/ptd-experiments/exp1.txt-metrics.csv_accuracies_vs_epoch.png) ![mccs](images/ptd-experiments/exp1.txt-metrics.csv_matthews_coefficients_vs_epoch.png)
-
-#### Comparing experiment 4 and 5
-
-![exp 4 and 5 comparison](images/ptd-experiments/matthews_coefficients_comparison.png)
-
-Experiment 4 returns the best mcc while simultaneous training solves the problem of overfitting in the best way. Next experiments could combine the two and note if they give better performance without overfitting.
-
-### Paraphrase Type Generation
-
-#### Baseline
-
-![generation baseline](images/ptg-experiments/e0_gen.txt-metrics.csv_scores_vs_epoch.png)
+All visulations are within their respective task and experiment.
 
 ## Members Contribution
 

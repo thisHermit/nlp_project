@@ -9,13 +9,13 @@ df = pd.read_csv(sys.argv[1])
 fig, ax = plt.subplots(figsize=(12, 6))
 
 # Plot Dev and Train scores
-ax.plot(df['Epoch'], df['Train Acc'], marker='o', linestyle='-', label='Dev Score')
-ax.plot(df['Epoch'], df['Dev Accuracy'], marker='s', linestyle='-', label='Train Score')
+ax.plot(df['Epoch'], df['Train Acc'], marker='o', linestyle='-', label='Train Acc')
+ax.plot(df['Epoch'], df['Dev Accuracy'], marker='s', linestyle='-', label='Dev Accuracy')
 
 # Customize the plot
 ax.set_xlabel('Epoch')
-ax.set_ylabel('Score')
-ax.set_title('Dev and Train Scores vs Epoch')
+ax.set_ylabel('Accuracy')
+ax.set_title('Accuracy vs Epoch')
 ax.grid(True)
 ax.legend()
 ax.set_ylim(bottom=0.6)
