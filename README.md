@@ -1483,13 +1483,13 @@ All visulations are within their respective task and experiment.
 
 ## Members Contribution
 
-**Madkour, Khaled:** _implemented all the experiments for Semantic Textual Similarity.
+**Madkour, Khaled:** _implemented all the experiments for Semantic Textual Similarity_
 
 **Khan, Bashar Jaan:** _implemented all the experiments for paraphrase type detection. Helped Muneeb work on paraphrase type generation (equal contributions)_
 
 **Khan, Muneeb:** _implemented all the experiments for paraphrase detection. Helped Bashar work on paraphrase type generation (equal contributions)_
 
-**Assy, Ahmed Tamer:** _implemented all the experiments for Sentiment Analysis.
+**Assy, Ahmed Tamer:** _implemented all the experiments for Sentiment Analysis_
 
 # AI-Usage Card
 
