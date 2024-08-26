@@ -1415,7 +1415,7 @@ Our goal is to improve a base BERT model's performance on STS tasks by experimen
 | **Quora Question Pairs (QQP)**               | **Dev Accuracy** |
 | -------------------------------------------- | ---------------- |
 | Baseline                                     | 77.10%           |
-| +Combined Loss Function                      | 77.20%           |
+| +Combined Loss Function (BCE + CEL + MNRL)   | 77.20%           |
 | +SMART Reg./ Loss                            | 77.50%           |
 | +Mean Pooling                                | 77.80%           |
 | +Self-Attn Pooling                           | 77.90%           |
