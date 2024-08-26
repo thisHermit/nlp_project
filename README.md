@@ -694,6 +694,7 @@ These are the results of the baseline, where we simply use a linear layer on top
 
 </details>
 
+
 ### Quora Question Pairs
 
 In this section, we explore various experiments conducted to enhance the performance of our paraphrase detection model. The primary objective is to accurately identify whether pairs of sentences are paraphrases while ensuring the model is robust and generalizes well to unseen data. We experimented with several advanced techniques, including SMART regularization, multi-head attention, and different pooling strategies for embedding generation. Additionally, we adopted a gradual unfreezing strategy during fine-tuning, inspired by the ULMFiT approach, to mitigate overfitting and allow the model to adapt better to the paraphrase detection task.
