@@ -13,6 +13,7 @@ from sklearn.metrics import matthews_corrcoef
 from optimizer import AdamW
 from torch.optim.lr_scheduler import ExponentialLR
 import torch.nn.functional as F
+from smart_pytorch import SMARTLoss, sym_kl_loss
 
 
 TQDM_DISABLE = False
@@ -63,6 +64,14 @@ class BartWithClassifier(nn.Module):
         self.fc_mu = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for mu
         self.fc_logvar = nn.Linear(self.bart.config.hidden_size, latent_dims) # Linear layer for log variance
         self.fc_z = nn.Linear(latent_dims, self.bart.config.hidden_size)
+
+        self.smart_loss = SMARTLoss(
+            eval_fn=self.eval_fn,
+            loss_fn=F.binary_cross_entropy_with_logits,
+            loss_last_fn=sym_kl_loss,
+            step_size=1e-3,
+            num_steps=1
+        )
 
         self.classifier = nn.Linear(self.bart.config.hidden_size, num_labels)
 
@@ -162,19 +171,6 @@ def transform_data(dataset, args, max_length=512):
     
     return dataloader
 
-def smart_loss(model, embeddings, logits, epsilon=1e-3):
-    # Generate perturbed embeddings
-    embed_norm = embeddings.norm(p=2, dim=-1, keepdim=True)
-    noise = torch.randn_like(embeddings) * epsilon * embed_norm
-    perturbed_embeddings = embeddings + noise
-
-    # Get predictions for perturbed embeddings
-    perturbed_logits = model.eval_fn(perturbed_embeddings)
-
-    # Compute KL divergence
-    kl_div = nn.KLDivLoss(reduction="batchmean")
-    return kl_div(F.log_softmax(perturbed_logits, dim=-1), F.softmax(logits, dim=-1))
-
 def train_model(model, train_data, dev_data, device, args, early_stopping=None):
     """
     Train the model. You can use any training loop you want. We recommend starting with
@@ -205,7 +201,7 @@ def train_model(model, train_data, dev_data, device, args, early_stopping=None):
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
             loss = criterion(outputs, labels)
             embeddings = model.bart.shared(input_ids)
-            smart_regularization = smart_loss(model, embeddings, outputs)
+            smart_regularization = model.smart_loss(embeddings, outputs)
             total_loss = loss + 0.02 * smart_regularization
             loss.backward()
             optimizer.step()
