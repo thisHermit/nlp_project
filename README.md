@@ -291,6 +291,25 @@ python multitask_classifier.py --option finetune --task qqp --use_gpu --pooling_
 ```
 - **MLP Head and MHA**: Both `--use_mha` and `--use_mlp` flags are optional. If you do not want to use the MLP head or MHA, simply omit these flags.
 
+### Semantic Textual Similarity
+
+#### Setup
+All Expirements can be reproduced by running the following command in each branch named STS_(EXP_NAME).
+```bash
+python -u multitask_classifier.py --use_gpu --epochs 10 --local_files_only --option finetune --task sts --hidden_dropout_prob 0.3
+```
+Except best performance model additional argument must be added to load pre-trained model
+```bash
+python -u multitask_classifier.py --use_gpu --epochs 10 --local_files_only --option finetune --task sts --hidden_dropout_prob 0.3 --load_pretrained finetune-20-1e-05-qqp.pt
+```
+
+### Sentiment Analysis 
+
+Run the following command to reproduce results
+
+```bash
+ python -u multitask_classifier.py --use_gpu --epochs 10 --local_files_only --option finetune --task sst --hidden_dropout_prob 0.1 --lr 1e-5 --batch_size 64
+```
 # Methodology
 
 The methodology of all the different tasks is given below.
