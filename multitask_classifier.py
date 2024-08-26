@@ -47,7 +47,6 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-EXP_NAME = 'BASE'
 
 class MultitaskBERT(nn.Module):
     """
@@ -434,18 +433,6 @@ def train_multitask(args):
             f"Epoch {epoch+1:02} ({args.task}): train loss :: {train_loss:.3f}, train :: {train_acc:.3f}, dev :: {dev_acc:.3f}"
         )
 
-        
-        filename = 'results.csv'
-        file_exists = os.path.isfile(filename)
-        # Open the CSV file in append mode
-        with open(filename, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            
-            # If file does not exist, write the header
-            if not file_exists:
-                writer.writerow(['exp', 'epoch_num', 'loss','train_corr','dev_corr'])
-            
-            writer.writerow([EXP_NAME, epoch+1, train_loss,train_acc,dev_acc])
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
