@@ -17,6 +17,9 @@
   - Khan, Muneeb
   - Assy, Ahmed Tamer
 
+# Index
+- [Setup instructions](#Setup instructions)
+
 # Setup instructions
 
 ## Base Setup
