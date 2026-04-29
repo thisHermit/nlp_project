@@ -18,7 +18,12 @@
   - Assy, Ahmed Tamer
 
 # Index
-- [Setup instructions](#Setup instructions)
+- [Setup instructions](#setup-instructions)
+- [Methodology](#methodology)
+- [Experiments](#experiments)
+- [Results](#results)
+- [Members contribution](#members-contribution)
+- [References](#references)
 
 # Setup instructions
 
